@@ -1,0 +1,82 @@
+[
+  {
+    "id": "faq_001",
+    "question": "How do I reset my password?",
+    "answer": "To reset your password, click 'Forgot Password' on the login page and follow the email instructions.",
+    "tags": ["account", "security"],
+    "category": "Account Management",
+    "source": "help_center"
+  },
+  {
+    "id": "faq_002",
+    "question": "What payment methods do you accept?",
+    "answer": "We accept credit cards (Visa, Mastercard, Amex), PayPal, and bank transfers.",
+    "tags": ["payment", "billing"],
+    "category": "Billing",
+    "source": "faq"
+  },
+  {
+    "id": "faq_003",
+    "question": "How can I contact customer support?",
+    "answer": "You can reach our support team via email at support@example.com or call 1-800-SUPPORT during business hours.",
+    "tags": ["support", "contact"],
+    "category": "Customer Support",
+    "source": "help_center"
+  },
+  {
+    "id": "faq_004",
+    "question": "What is your refund policy?",
+    "answer": "We offer full refunds within 30 days of purchase for unused products. Contact support for assistance.",
+    "tags": ["refund", "returns", "policy"],
+    "category": "Policies",
+    "source": "legal"
+  },
+  {
+    "id": "faq_005",
+    "question": "How do I update my profile information?",
+    "answer": "Log into your account, click 'Settings', then 'Profile'. Edit your information and click Save.",
+    "tags": ["account", "settings"],
+    "category": "Account Management",
+    "source": "help_center"
+  },
+  {
+    "id": "faq_006",
+    "question": "Is my data secure with your service?",
+    "answer": "Yes, we use industry-standard encryption (SSL/TLS) and follow GDPR compliance guidelines to protect your data.",
+    "tags": ["security", "privacy"],
+    "category": "Security",
+    "source": "legal"
+  },
+  {
+    "id": "faq_007",
+    "question": "What are the system requirements for your application?",
+    "answer": "We support Windows, macOS, and Linux. Requires Python 3.11 and 2GB RAM minimum.",
+    "tags": ["technical", "requirements"],
+    "category": "Technical",
+    "source": "documentation"
+  },
+  {
+    "id": "faq_008",
+    "question": "How do I report a bug?",
+    "answer": "Please report bugs via our GitHub issues page or email bugs@example.com with detailed steps to reproduce.",
+    "tags": ["support", "bug", "development"],
+    "category": "Support",
+    "source": "documentation"
+  },
+  {
+    "id": "faq_009",
+    "question": "Can I cancel my subscription anytime?",
+    "answer": "Yes, you can cancel your subscription at any time. Go to Settings > Billing > Subscription to manage your plan.",
+    "tags": ["subscription", "billing"],
+    "category": "Billing",
+    "source": "faq"
+  },
+  {
+    "id": "faq_010",
+    "question": "How often is the data synchronized?",
+    "answer": "Data is synchronized in real-time across all your devices when you are connected to the internet.",
+    "tags": ["sync", "technical"],
+    "category": "Technical",
+    "source": "documentation"
+  }
+]
