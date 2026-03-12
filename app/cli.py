@@ -9,11 +9,12 @@ from app.logging import configure_logging
 
 
 def build_startup_message(settings: AppSettings) -> str:
-    """Return a small status line for the scaffolded app."""
+    """Return a small status line for the current app baseline."""
 
     return (
-        f"{settings.app_name} scaffold ready | "
+        f"{settings.app_name} core services ready | "
         f"env={settings.environment} | "
+        f"faq={settings.faq_data_path} | "
         f"qdrant={settings.qdrant_url} | "
         f"ollama={settings.ollama_base_url}"
     )
@@ -29,6 +30,6 @@ def main() -> int:
         return 1
 
     logger = configure_logging(settings)
-    logger.info("Application scaffold initialized")
+    logger.info("Application core services initialized")
     print(build_startup_message(settings))
     return 0

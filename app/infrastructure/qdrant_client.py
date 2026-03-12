@@ -1,227 +1,301 @@
-"""Qdrant vector database client."""
+"""Small Qdrant HTTP client wrapper."""
 
 from __future__ import annotations
 
-import logging
-from typing import Any, Optional
-
-try:
-    from qdrant_client import QdrantClient as QdrantSDKClient
-    from qdrant_client.models import (
-        Distance,
-        PointStruct,
-        VectorParams,
-        FieldCondition,
-        MatchValue,
-    )
-except ImportError as e:
-    raise ImportError(
-        "qdrant-client not installed. Install with: pip install qdrant-client"
-    ) from e
+from dataclasses import dataclass
+import json
+from typing import Any, Mapping, Sequence
+from urllib import error, request
 
 from app.config import AppSettings
 
-logger = logging.getLogger(__name__)
+DEFAULT_QDRANT_DISTANCE = "Cosine"
 
 
+class QdrantClientError(RuntimeError):
+    """Raised when a Qdrant request fails."""
+
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
+@dataclass(frozen=True, slots=True)
+class QdrantPoint:
+    """One Qdrant point for upsert operations."""
+
+    id: str
+    vector: tuple[float, ...]
+    payload: dict[str, Any]
+
+    def to_request_object(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "vector": list(self.vector),
+            "payload": self.payload,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class QdrantSearchResult:
+    """One search result returned from Qdrant."""
+
+    id: str
+    score: float
+    payload: dict[str, Any] | None
+
+
+@dataclass(frozen=True, slots=True)
+class QdrantCollectionConfig:
+    """Collection vector configuration relevant for compatibility checks."""
+
+    vector_size: int
+    distance: str
+
+
+@dataclass(slots=True)
 class QdrantClient:
-    """Client for Qdrant vector database."""
+    """Minimal client for collection management and vector operations."""
 
-    def __init__(self, settings: AppSettings) -> None:
-        """Initialize the Qdrant client.
+    base_url: str
+    collection_name: str
+    timeout_seconds: float
 
-        Args:
-            settings: Application settings containing Qdrant URL and collection name.
-        """
-        self.url = settings.qdrant_url
-        self.collection_name = settings.qdrant_collection_name
-        self.client = QdrantSDKClient(url=self.url)
+    @classmethod
+    def from_settings(cls, settings: AppSettings) -> "QdrantClient":
+        """Create a Qdrant client from centralized settings."""
 
-    def collection_exists(self, collection_name: Optional[str] = None) -> bool:
-        """Check if a collection exists.
+        return cls(
+            base_url=settings.qdrant_url,
+            collection_name=settings.qdrant_collection_name,
+            timeout_seconds=settings.qdrant_timeout_seconds,
+        )
 
-        Args:
-            collection_name: Collection name (defaults to configured collection).
+    def ensure_collection(
+        self,
+        vector_size: int,
+        *,
+        distance: str = DEFAULT_QDRANT_DISTANCE,
+    ) -> None:
+        """Create the collection if missing, otherwise verify vector size."""
 
-        Returns:
-            True if collection exists, False otherwise.
-        """
-        name = collection_name or self.collection_name
+        if vector_size < 1:
+            raise QdrantClientError("Vector size must be >= 1")
+
         try:
-            self.client.collection_info(name)
-            return True
-        except Exception as e:
-            logger.debug(f"Collection {name} does not exist: {e}")
-            return False
+            collection_info = self.get_collection_info()
+        except QdrantClientError as exc:
+            if exc.status_code != 404:
+                raise
+            self.create_collection(vector_size, distance=distance)
+            return
+
+        existing_config = _extract_vector_config(collection_info)
+        if existing_config.vector_size != vector_size:
+            raise QdrantClientError(
+                "Configured Qdrant collection has vector size "
+                f"{existing_config.vector_size}, expected {vector_size}"
+            )
+        if existing_config.distance.casefold() != distance.casefold():
+            raise QdrantClientError(
+                "Configured Qdrant collection uses distance "
+                f"{existing_config.distance}, expected {distance}"
+            )
+
+    def get_collection_info(self) -> dict[str, Any]:
+        """Return raw collection information from Qdrant."""
+
+        return self._request_json("GET", f"/collections/{self.collection_name}")
 
     def create_collection(
         self,
-        vector_dim: int,
-        collection_name: Optional[str] = None,
-        distance_metric: str = "cosine",
+        vector_size: int,
+        *,
+        distance: str = DEFAULT_QDRANT_DISTANCE,
     ) -> None:
-        """Create a new collection.
+        """Create a Qdrant collection for FAQ vectors."""
 
-        Args:
-            vector_dim: Dimensionality of vectors in this collection.
-            collection_name: Collection name (defaults to configured collection).
-            distance_metric: Distance metric (cosine, euclidean, dot_product).
+        self._request_json(
+            "PUT",
+            f"/collections/{self.collection_name}",
+            {"vectors": {"size": vector_size, "distance": distance}},
+        )
 
-        Raises:
-            RuntimeError: If collection creation fails.
-        """
-        name = collection_name or self.collection_name
-
-        if self.collection_exists(name):
-            logger.info(f"Collection {name} already exists")
-            return
-
-        try:
-            distance = Distance.COSINE
-            if distance_metric == "euclidean":
-                distance = Distance.EUCLID
-            elif distance_metric == "dot_product":
-                distance = Distance.DOT
-
-            self.client.recreate_collection(
-                collection_name=name,
-                vectors_config=VectorParams(size=vector_dim, distance=distance),
-            )
-            logger.info(f"Created collection {name} with vector dim {vector_dim}")
-        except Exception as e:
-            raise RuntimeError(f"Failed to create collection {name}: {e}") from e
-
-    def upsert_points(
-        self,
-        points: list[PointStruct],
-        collection_name: Optional[str] = None,
-    ) -> None:
-        """Upsert points into the collection.
-
-        Args:
-            points: List of PointStruct objects to upsert.
-            collection_name: Collection name (defaults to configured collection).
-
-        Raises:
-            RuntimeError: If upsert fails.
-        """
-        name = collection_name or self.collection_name
+    def upsert_points(self, points: Sequence[QdrantPoint]) -> int:
+        """Insert or update points in the configured collection."""
 
         if not points:
-            logger.warning("No points to upsert")
-            return
+            return 0
 
-        try:
-            self.client.upsert(
-                collection_name=name,
-                points=points,
-            )
-            logger.info(f"Upserted {len(points)} points to {name}")
-        except Exception as e:
-            raise RuntimeError(f"Failed to upsert points into {name}: {e}") from e
+        payload = {"points": [point.to_request_object() for point in points]}
+        self._request_json(
+            "PUT",
+            f"/collections/{self.collection_name}/points?wait=true",
+            payload,
+        )
+        return len(points)
 
     def search(
         self,
-        vector: list[float],
-        collection_name: Optional[str] = None,
-        limit: int = 10,
-        score_threshold: Optional[float] = None,
-    ) -> list[dict[str, Any]]:
-        """Search for similar vectors in the collection.
+        vector: Sequence[float],
+        *,
+        limit: int,
+        with_payload: bool = True,
+    ) -> list[QdrantSearchResult]:
+        """Search the configured collection for nearest neighbours."""
 
-        Args:
-            vector: Query vector.
-            collection_name: Collection name (defaults to configured collection).
-            limit: Maximum number of results to return.
-            score_threshold: Minimum similarity score threshold.
+        if limit < 1:
+            raise QdrantClientError("Search limit must be >= 1")
 
-        Returns:
-            List of search results with id, score, and payload.
-
-        Raises:
-            RuntimeError: If search fails.
-        """
-        name = collection_name or self.collection_name
+        query_vector = [float(item) for item in vector]
+        if not query_vector:
+            raise QdrantClientError("Search vector must not be empty")
 
         try:
-            results = self.client.search(
-                collection_name=name,
-                query_vector=vector,
-                limit=limit,
-                score_threshold=score_threshold,
-            )
-
-            return [
+            response = self._request_json(
+                "POST",
+                f"/collections/{self.collection_name}/points/query",
                 {
-                    "id": result.id,
-                    "score": result.score,
-                    "payload": result.payload,
-                }
-                for result in results
-            ]
-        except Exception as e:
-            raise RuntimeError(f"Search failed in {name}: {e}") from e
-
-    def get_point(
-        self,
-        point_id: int | str,
-        collection_name: Optional[str] = None,
-    ) -> Optional[dict[str, Any]]:
-        """Retrieve a specific point by ID.
-
-        Args:
-            point_id: ID of the point to retrieve.
-            collection_name: Collection name (defaults to configured collection).
-
-        Returns:
-            Point data with payload, or None if not found.
-
-        Raises:
-            RuntimeError: If retrieval fails.
-        """
-        name = collection_name or self.collection_name
-
-        try:
-            point = self.client.retrieve(
-                collection_name=name,
-                ids=[point_id],
+                    "query": query_vector,
+                    "limit": limit,
+                    "with_payload": with_payload,
+                },
             )
-            if point:
-                return {
-                    "id": point[0].id,
-                    "payload": point[0].payload,
-                }
-            return None
-        except Exception as e:
-            logger.debug(f"Failed to get point {point_id} from {name}: {e}")
-            return None
+        except QdrantClientError as exc:
+            if exc.status_code != 404:
+                raise
+            response = self._request_json(
+                "POST",
+                f"/collections/{self.collection_name}/points/search",
+                {
+                    "vector": query_vector,
+                    "limit": limit,
+                    "with_payload": with_payload,
+                },
+            )
 
-    def delete_collection(self, collection_name: Optional[str] = None) -> None:
-        """Delete a collection.
+        raw_results = response.get("result")
+        if not isinstance(raw_results, list):
+            raise QdrantClientError("Qdrant returned an invalid search response")
 
-        Args:
-            collection_name: Collection name (defaults to configured collection).
+        results: list[QdrantSearchResult] = []
+        for raw_result in raw_results:
+            if not isinstance(raw_result, Mapping):
+                raise QdrantClientError("Qdrant returned an invalid search result")
+            point_id = raw_result.get("id")
+            score = raw_result.get("score")
+            payload = raw_result.get("payload")
+            if not isinstance(point_id, (str, int)):
+                raise QdrantClientError("Qdrant search result is missing an id")
+            if not isinstance(score, (int, float)):
+                raise QdrantClientError("Qdrant search result is missing a score")
+            if payload is not None and not isinstance(payload, dict):
+                raise QdrantClientError("Qdrant search payload must be an object")
+            results.append(
+                QdrantSearchResult(
+                    id=str(point_id),
+                    score=float(score),
+                    payload=payload,
+                )
+            )
+        return results
 
-        Raises:
-            RuntimeError: If deletion fails.
-        """
-        name = collection_name or self.collection_name
+    def _request_json(
+        self,
+        method: str,
+        path: str,
+        payload: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        body = None
+        headers = {"Accept": "application/json"}
+        if payload is not None:
+            body = json.dumps(payload).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+
+        http_request = request.Request(
+            url=f"{self.base_url.rstrip('/')}/{path.lstrip('/')}",
+            data=body,
+            headers=headers,
+            method=method,
+        )
 
         try:
-            self.client.delete_collection(name)
-            logger.info(f"Deleted collection {name}")
-        except Exception as e:
-            raise RuntimeError(f"Failed to delete collection {name}: {e}") from e
+            with request.urlopen(http_request, timeout=self.timeout_seconds) as response:
+                raw_response = response.read().decode("utf-8")
+        except error.HTTPError as exc:
+            raise QdrantClientError(
+                _format_http_error("Qdrant", exc),
+                status_code=exc.code,
+            ) from exc
+        except error.URLError as exc:
+            raise QdrantClientError(f"Could not reach Qdrant: {exc.reason}") from exc
+        except TimeoutError as exc:
+            raise QdrantClientError("Qdrant request timed out") from exc
 
-    def health_check(self) -> bool:
-        """Check if Qdrant is available and healthy.
-
-        Returns:
-            True if Qdrant is healthy, False otherwise.
-        """
         try:
-            self.client.get_collections()
-            return True
-        except Exception as e:
-            logger.warning(f"Qdrant health check failed: {e}")
-            return False
+            parsed = json.loads(raw_response)
+        except json.JSONDecodeError as exc:
+            raise QdrantClientError("Qdrant returned invalid JSON") from exc
+
+        if not isinstance(parsed, dict):
+            raise QdrantClientError("Qdrant returned an unexpected response payload")
+        return parsed
+
+
+def _extract_vector_config(collection_info: Mapping[str, Any]) -> QdrantCollectionConfig:
+    result = collection_info.get("result")
+    if not isinstance(result, Mapping):
+        raise QdrantClientError("Qdrant collection response is missing 'result'")
+
+    config = result.get("config")
+    if not isinstance(config, Mapping):
+        raise QdrantClientError("Qdrant collection response is missing 'config'")
+
+    params = config.get("params")
+    if not isinstance(params, Mapping):
+        raise QdrantClientError("Qdrant collection response is missing 'params'")
+
+    vectors = params.get("vectors")
+    if not isinstance(vectors, Mapping):
+        raise QdrantClientError("Qdrant collection response is missing 'vectors'")
+
+    vector_config = vectors
+    size = vector_config.get("size")
+    distance = vector_config.get("distance")
+    if not isinstance(size, int) or not isinstance(distance, str):
+        if len(vectors) == 1:
+            vector_config = next(iter(vectors.values()))
+            if not isinstance(vector_config, Mapping):
+                raise QdrantClientError("Qdrant collection vector config is invalid")
+            size = vector_config.get("size")
+            distance = vector_config.get("distance")
+
+    if not isinstance(size, int):
+        raise QdrantClientError("Qdrant collection response is missing vector size")
+    if not isinstance(distance, str) or not distance.strip():
+        raise QdrantClientError("Qdrant collection response is missing vector distance")
+    return QdrantCollectionConfig(vector_size=size, distance=distance.strip())
+
+
+def _format_http_error(service_name: str, exc: error.HTTPError) -> str:
+    try:
+        body = exc.read().decode("utf-8")
+    except Exception:
+        body = ""
+
+    detail = body.strip()
+    if detail:
+        try:
+            parsed = json.loads(detail)
+        except json.JSONDecodeError:
+            pass
+        else:
+            if isinstance(parsed, dict):
+                status = parsed.get("status")
+                if isinstance(status, Mapping) and isinstance(status.get("error"), str):
+                    detail = status["error"].strip()
+                elif isinstance(parsed.get("error"), str):
+                    detail = parsed["error"].strip()
+        return f"{service_name} request failed with status {exc.code}: {detail}"
+
+    return f"{service_name} request failed with status {exc.code}"

@@ -1,82 +1,82 @@
 [
   {
-    "id": "faq_001",
-    "question": "How do I reset my password?",
-    "answer": "To reset your password, click 'Forgot Password' on the login page and follow the email instructions.",
-    "tags": ["account", "security"],
-    "category": "Account Management",
-    "source": "help_center"
+    "id": "faq-01-services-overview",
+    "question": "Welche IT-Dienstleistungen bieten Sie an?",
+    "answer": "Wir bieten eine breite Palette von IT-Dienstleistungen an, darunter Netzwerkmanagement, IT-Support, Cloud-Lösungen, Datensicherung und Wiederherstellung, Cybersicherheitslösungen, Softwareentwicklung sowie IT-Beratung und IT-Strategie.",
+    "category": "services",
+    "tags": ["it-services", "support", "cloud", "security"],
+    "source": "data/faq.txt"
   },
   {
-    "id": "faq_002",
-    "question": "What payment methods do you accept?",
-    "answer": "We accept credit cards (Visa, Mastercard, Amex), PayPal, and bank transfers.",
-    "tags": ["payment", "billing"],
-    "category": "Billing",
-    "source": "faq"
+    "id": "faq-02-support-options",
+    "question": "Welche Support-Optionen stehen zur Verfügung?",
+    "answer": "Wir bieten verschiedene Support-Optionen an, einschließlich 24/7 Helpdesk-Support, Remote-Support, Vor-Ort-Support und spezialisierte technische Unterstützung. Unsere Support-Teams stehen Ihnen jederzeit zur Verfügung, um sicherzustellen, dass Ihre IT-Infrastruktur reibungslos funktioniert.",
+    "category": "support",
+    "tags": ["helpdesk", "remote-support", "onsite-support"],
+    "source": "data/faq.txt"
   },
   {
-    "id": "faq_003",
-    "question": "How can I contact customer support?",
-    "answer": "You can reach our support team via email at support@example.com or call 1-800-SUPPORT during business hours.",
-    "tags": ["support", "contact"],
-    "category": "Customer Support",
-    "source": "help_center"
+    "id": "faq-03-security-threats",
+    "question": "Wie gehen Sie mit IT-Sicherheitsbedrohungen um?",
+    "answer": "Wir verwenden eine Kombination aus modernsten Cybersicherheitslösungen, regelmäßigen Sicherheitsüberprüfungen und Schulungen für Mitarbeiter, um IT-Sicherheitsbedrohungen zu identifizieren und zu verhindern. Zudem implementieren wir Firewalls, Antivirus-Software, Intrusion-Detection-Systeme und führen regelmäßige Penetrationstests durch.",
+    "category": "security",
+    "tags": ["cybersecurity", "firewall", "antivirus", "penetration-test"],
+    "source": "data/faq.txt"
   },
   {
-    "id": "faq_004",
-    "question": "What is your refund policy?",
-    "answer": "We offer full refunds within 30 days of purchase for unused products. Contact support for assistance.",
-    "tags": ["refund", "returns", "policy"],
-    "category": "Policies",
-    "source": "legal"
+    "id": "faq-04-cloud-migration",
+    "question": "Bieten Sie Cloud-Migrationsdienste an?",
+    "answer": "Ja, wir bieten umfassende Cloud-Migrationsdienste an, die alles von der Planung und Bewertung bis hin zur Durchführung der Migration und der anschließenden Optimierung und Verwaltung Ihrer Cloud-Umgebung umfassen. Wir arbeiten mit führenden Cloud-Anbietern wie AWS, Microsoft Azure und Google Cloud.",
+    "category": "cloud",
+    "tags": ["cloud-migration", "aws", "azure", "google-cloud"],
+    "source": "data/faq.txt"
   },
   {
-    "id": "faq_005",
-    "question": "How do I update my profile information?",
-    "answer": "Log into your account, click 'Settings', then 'Profile'. Edit your information and click Save.",
-    "tags": ["account", "settings"],
-    "category": "Account Management",
-    "source": "help_center"
+    "id": "faq-05-data-protection",
+    "question": "Wie können Sie uns bei der Einhaltung von Datenschutzvorschriften unterstützen?",
+    "answer": "Wir helfen Ihnen, die relevanten Datenschutzvorschriften wie die DSGVO (Datenschutz-Grundverordnung) einzuhalten, indem wir sichere Datenverarbeitungspraktiken implementieren, Ihre IT-Systeme regelmäßig auf Sicherheitslücken überprüfen und Richtlinien für die Datenspeicherung und Datenverarbeitung entwickeln.",
+    "category": "compliance",
+    "tags": ["dsgvo", "compliance", "data-protection"],
+    "source": "data/faq.txt"
   },
   {
-    "id": "faq_006",
-    "question": "Is my data secure with your service?",
-    "answer": "Yes, we use industry-standard encryption (SSL/TLS) and follow GDPR compliance guidelines to protect your data.",
-    "tags": ["security", "privacy"],
-    "category": "Security",
-    "source": "legal"
+    "id": "faq-06-resilience",
+    "question": "Welche Maßnahmen ergreifen Sie, um die Ausfallsicherheit meiner IT-Systeme zu gewährleisten?",
+    "answer": "Wir implementieren Redundanzlösungen, regelmäßige Backups, Monitoring-Systeme und Notfallwiederherstellungspläne, um die Ausfallsicherheit Ihrer IT-Systeme zu gewährleisten. Unsere Lösungen sind darauf ausgelegt, Ihre Geschäftskontinuität zu gewährleisten, auch im Falle eines unerwarteten Ausfalls.",
+    "category": "operations",
+    "tags": ["backup", "monitoring", "redundancy", "disaster-recovery"],
+    "source": "data/faq.txt"
   },
   {
-    "id": "faq_007",
-    "question": "What are the system requirements for your application?",
-    "answer": "We support Windows, macOS, and Linux. Requires Python 3.11 and 2GB RAM minimum.",
-    "tags": ["technical", "requirements"],
-    "category": "Technical",
-    "source": "documentation"
+    "id": "faq-07-custom-software",
+    "question": "Können Sie maßgeschneiderte Softwarelösungen für unser Unternehmen entwickeln?",
+    "answer": "Ja, wir bieten maßgeschneiderte Softwareentwicklungsdienste an, die auf die spezifischen Anforderungen Ihres Unternehmens zugeschnitten sind. Unser Entwicklungsteam arbeitet eng mit Ihnen zusammen, um Lösungen zu entwerfen, die Ihre Geschäftsprozesse effizienter und effektiver machen.",
+    "category": "software-development",
+    "tags": ["custom-software", "development", "business-processes"],
+    "source": "data/faq.txt"
   },
   {
-    "id": "faq_008",
-    "question": "How do I report a bug?",
-    "answer": "Please report bugs via our GitHub issues page or email bugs@example.com with detailed steps to reproduce.",
-    "tags": ["support", "bug", "development"],
-    "category": "Support",
-    "source": "documentation"
+    "id": "faq-08-consulting-process",
+    "question": "Wie läuft eine typische IT-Beratung ab?",
+    "answer": "Eine IT-Beratung beginnt mit einer umfassenden Analyse Ihrer aktuellen IT-Infrastruktur und Prozesse. Danach erarbeiten wir gemeinsam eine maßgeschneiderte Strategie, die Ihre Geschäftsziele unterstützt und Ihre IT-Investitionen maximiert. Wir begleiten Sie durch den gesamten Prozess und stellen sicher, dass die empfohlene Strategie erfolgreich umgesetzt wird.",
+    "category": "consulting",
+    "tags": ["consulting", "strategy", "it-investment"],
+    "source": "data/faq.txt"
   },
   {
-    "id": "faq_009",
-    "question": "Can I cancel my subscription anytime?",
-    "answer": "Yes, you can cancel your subscription at any time. Go to Settings > Billing > Subscription to manage your plan.",
-    "tags": ["subscription", "billing"],
-    "category": "Billing",
-    "source": "faq"
+    "id": "faq-09-industries",
+    "question": "Welche Branchen bedienen Sie?",
+    "answer": "Wir bedienen eine Vielzahl von Branchen, darunter Gesundheitswesen, Finanzen, Bildung, Fertigung, Einzelhandel und öffentliche Verwaltung. Unsere IT-Lösungen sind flexibel und skalierbar, um den spezifischen Anforderungen jeder Branche gerecht zu werden.",
+    "category": "industries",
+    "tags": ["healthcare", "finance", "education", "public-sector"],
+    "source": "data/faq.txt"
   },
   {
-    "id": "faq_010",
-    "question": "How often is the data synchronized?",
-    "answer": "Data is synchronized in real-time across all your devices when you are connected to the internet.",
-    "tags": ["sync", "technical"],
-    "category": "Technical",
-    "source": "documentation"
+    "id": "faq-10-pricing",
+    "question": "Wie viel kostet Ihre Dienstleistung?",
+    "answer": "Die Kosten unserer Dienstleistungen variieren je nach Umfang und Art der benötigten Services. Wir bieten flexible Preismodelle an, die auf Stundenbasis, als Pauschalgebühr oder im Rahmen von Serviceverträgen berechnet werden können. Gerne erstellen wir Ihnen ein individuelles Angebot, das auf Ihre Bedürfnisse zugeschnitten ist.",
+    "category": "pricing",
+    "tags": ["pricing", "service-contract", "offer"],
+    "source": "data/faq.txt"
   }
 ]

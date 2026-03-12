@@ -1,84 +1,81 @@
-"""FAQ repository for loading and managing FAQ entries."""
+"""Repository for loading FAQ entries from JSON."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
-import logging
 from pathlib import Path
-from typing import Sequence
+from typing import Any
 
-from app.domain.faq import FaqEntry
+from app.config import AppSettings, resolve_project_path
+from app.domain.faq import FAQEntry, FAQValidationError
 
-logger = logging.getLogger(__name__)
+
+class FAQRepositoryError(RuntimeError):
+    """Raised when FAQ data cannot be loaded from disk."""
 
 
-class FaqRepository:
-    """Repository for loading FAQ entries from JSON files."""
+@dataclass(slots=True)
+class FAQRepository:
+    """Load validated FAQ entries from a JSON file."""
 
-    def __init__(self) -> None:
-        """Initialize the FAQ repository."""
+    data_path: Path
 
-    def load_from_file(self, file_path: str | Path) -> list[FaqEntry]:
-        """Load FAQ entries from a JSON file.
+    @classmethod
+    def from_settings(cls, settings: AppSettings) -> "FAQRepository":
+        """Create a repository using the configured FAQ data path."""
 
-        Args:
-            file_path: Path to the JSON file containing FAQ entries.
+        return cls(data_path=resolve_project_path(settings.faq_data_path))
 
-        Returns:
-            List of validated FaqEntry objects.
+    def list_entries(self) -> list[FAQEntry]:
+        """Return all FAQ entries as validated domain objects."""
 
-        Raises:
-            FileNotFoundError: If the FAQ file does not exist.
-            ValueError: If the FAQ data is invalid or malformed.
-        """
-        path = Path(file_path)
+        payload = self._load_json()
+        if not isinstance(payload, list):
+            raise FAQRepositoryError("FAQ data file must contain a JSON array")
 
-        if not path.exists():
-            raise FileNotFoundError(f"FAQ file not found: {path}")
-
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        if not isinstance(data, list):
-            raise ValueError("FAQ data must be a list of entries")
-
-        entries: list[FaqEntry] = []
-        for idx, item in enumerate(data):
+        entries: list[FAQEntry] = []
+        seen_entry_ids: set[str] = set()
+        for index, raw_entry in enumerate(payload, start=1):
             try:
-                entry = self._parse_entry(item)
-                entry.validate()
-                entries.append(entry)
-            except (TypeError, ValueError) as e:
-                logger.warning(f"Failed to parse FAQ entry at index {idx}: {e}")
-                raise ValueError(f"Invalid FAQ entry at index {idx}: {e}") from e
-
-        logger.info(f"Loaded {len(entries)} FAQ entries from {path}")
+                entry = FAQEntry.from_dict(raw_entry, record_index=index)
+            except FAQValidationError as exc:
+                raise FAQRepositoryError(str(exc)) from exc
+            if entry.id in seen_entry_ids:
+                raise FAQRepositoryError(
+                    f"FAQ record {index} uses duplicate id '{entry.id}'"
+                )
+            seen_entry_ids.add(entry.id)
+            entries.append(entry)
         return entries
 
-    @staticmethod
-    def _parse_entry(data: dict) -> FaqEntry:
-        """Parse a single FAQ entry from a dictionary.
+    def get_by_id(self, entry_id: str) -> FAQEntry | None:
+        """Return one FAQ entry by id, or None if it does not exist."""
 
-        Args:
-            data: Dictionary containing FAQ entry data.
+        normalized_id = entry_id.strip()
+        if not normalized_id:
+            raise FAQRepositoryError("FAQ entry id must not be empty")
 
-        Returns:
-            FaqEntry object.
+        for entry in self.list_entries():
+            if entry.id == normalized_id:
+                return entry
+        return None
 
-        Raises:
-            TypeError: If required fields are missing.
-            ValueError: If field types are incorrect.
-        """
+    def _load_json(self) -> Any:
         try:
-            return FaqEntry(
-                id=str(data["id"]),
-                question=str(data["question"]),
-                answer=str(data["answer"]),
-                tags=data.get("tags", []) or [],
-                category=data.get("category"),
-                source=data.get("source"),
-            )
-        except KeyError as e:
-            raise TypeError(f"Missing required field: {e}") from e
-        except (TypeError, ValueError) as e:
-            raise ValueError(f"Invalid field value: {e}") from e
+            raw_text = self.data_path.read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise FAQRepositoryError(
+                f"FAQ data file not found: {self.data_path}"
+            ) from exc
+        except OSError as exc:
+            raise FAQRepositoryError(
+                f"FAQ data file could not be read: {self.data_path}"
+            ) from exc
+
+        try:
+            return json.loads(raw_text)
+        except json.JSONDecodeError as exc:
+            raise FAQRepositoryError(
+                f"FAQ data file contains invalid JSON: {self.data_path}"
+            ) from exc

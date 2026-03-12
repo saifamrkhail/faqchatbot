@@ -1,222 +1,110 @@
-"""Ingestion service for loading FAQ entries into Qdrant."""
+"""Offline FAQ ingestion service."""
 
 from __future__ import annotations
 
-import logging
-from dataclasses import dataclass, field
-from typing import Sequence
+from dataclasses import dataclass
 
-try:
-    from qdrant_client.models import PointStruct
-except ImportError as e:
-    raise ImportError(
-        "qdrant-client not installed. Install with: pip install qdrant-client"
-    ) from e
-
-from app.domain.faq import FaqEntry
-from app.infrastructure.ollama_client import OllamaClient
-from app.infrastructure.qdrant_client import QdrantClient
-
-logger = logging.getLogger(__name__)
+from app.config import AppSettings
+from app.domain import FAQEntry
+from app.infrastructure import (
+    QdrantPoint,
+    OllamaClient,
+    OllamaClientError,
+    QdrantClient,
+    QdrantClientError,
+)
+from app.repositories import FAQRepository, FAQRepositoryError
 
 
-@dataclass
+class IngestionServiceError(RuntimeError):
+    """Raised when the ingestion workflow fails."""
+
+
+@dataclass(frozen=True, slots=True)
 class IngestionResult:
-    """Result of an ingestion operation."""
+    """Summary of one completed ingestion run."""
 
-    total_entries: int = 0
-    successful_entries: int = 0
-    failed_entries: int = 0
-    errors: list[str] = field(default_factory=list)
-
-    def add_error(self, entry_id: str, error: str) -> None:
-        """Record an error for a failed entry.
-
-        Args:
-            entry_id: ID of the FAQ entry that failed.
-            error: Error message.
-        """
-        self.errors.append(f"Entry {entry_id}: {error}")
-        self.failed_entries += 1
-
-    @property
-    def success(self) -> bool:
-        """Check if ingestion was fully successful."""
-        return self.failed_entries == 0
-
-    def __str__(self) -> str:
-        """Return a summary string."""
-        summary = (
-            f"Ingestion Result: {self.successful_entries}/{self.total_entries} "
-            f"entries successfully ingested"
-        )
-        if self.failed_entries > 0:
-            summary += f", {self.failed_entries} failed"
-        return summary
+    processed_entries: int
+    upserted_points: int
+    vector_size: int
+    collection_name: str
 
 
+@dataclass(slots=True)
 class IngestionService:
-    """Service for ingesting FAQ entries into Qdrant."""
+    """Load FAQ entries, generate embeddings, and upsert them into Qdrant."""
 
-    def __init__(
-        self,
-        ollama_client: OllamaClient,
-        qdrant_client: QdrantClient,
-    ) -> None:
-        """Initialize the ingestion service.
+    repository: FAQRepository
+    ollama_client: OllamaClient
+    qdrant_client: QdrantClient
 
-        Args:
-            ollama_client: Client for generating embeddings.
-            qdrant_client: Client for storing vectors in Qdrant.
-        """
-        self.ollama = ollama_client
-        self.qdrant = qdrant_client
+    @classmethod
+    def from_settings(cls, settings: AppSettings) -> "IngestionService":
+        """Build a fully wired ingestion service from application settings."""
 
-    async def ingest_faq_entries(
-        self,
-        entries: Sequence[FaqEntry],
-    ) -> IngestionResult:
-        """Ingest FAQ entries into Qdrant.
+        return cls(
+            repository=FAQRepository.from_settings(settings),
+            ollama_client=OllamaClient.from_settings(settings),
+            qdrant_client=QdrantClient.from_settings(settings),
+        )
 
-        Args:
-            entries: Sequence of FaqEntry objects to ingest.
-
-        Returns:
-            IngestionResult with success/failure counts and errors.
-        """
-        result = IngestionResult(total_entries=len(entries))
-
-        if not entries:
-            logger.warning("No FAQ entries to ingest")
-            return result
+    def ingest(self) -> IngestionResult:
+        """Ingest the configured FAQ dataset into Qdrant."""
 
         try:
-            # Get embedding dimension for collection creation
-            embedding_dim = await self.ollama.get_embedding_dimension()
-            logger.info(f"Embedding dimension: {embedding_dim}")
-
-            # Ensure collection exists with correct dimensions
-            await self.ensure_collection_exists(embedding_dim)
-
-            # Prepare points (embed and structure data)
-            points = await self._prepare_qdrant_points(entries, result)
-
-            if not points:
-                logger.error("No valid points to upsert")
-                return result
-
-            # Upsert to Qdrant
-            try:
-                self.qdrant.upsert_points(points)
-                result.successful_entries = len(points)
-            except RuntimeError as e:
-                logger.error(f"Upsert failed: {e}")
-                result.add_error("batch", str(e))
-
-        except RuntimeError as e:
-            logger.error(f"Ingestion failed: {e}")
-            result.add_error("setup", str(e))
-
-        logger.info(str(result))
-        return result
-
-    async def ensure_collection_exists(self, embedding_dim: int) -> None:
-        """Ensure Qdrant collection exists with correct vector dimensions.
-
-        Args:
-            embedding_dim: Expected vector dimension.
-
-        Raises:
-            RuntimeError: If collection verification/creation fails.
-        """
-        try:
-            if self.qdrant.collection_exists():
-                logger.info(
-                    f"Collection '{self.qdrant.collection_name}' already exists"
+            entries = self.repository.list_entries()
+            if not entries:
+                return IngestionResult(
+                    processed_entries=0,
+                    upserted_points=0,
+                    vector_size=0,
+                    collection_name=self.qdrant_client.collection_name,
                 )
-                # TODO: Verify dimensions match once collection info API is available
-            else:
-                logger.info(f"Creating collection '{self.qdrant.collection_name}'")
-                self.qdrant.create_collection(
-                    vector_dim=embedding_dim,
+
+            points = self._build_points(entries)
+            vector_size = len(points[0].vector)
+            self.qdrant_client.ensure_collection(vector_size)
+            upserted_points = self.qdrant_client.upsert_points(points)
+        except FAQRepositoryError as exc:
+            raise IngestionServiceError(f"FAQ loading failed: {exc}") from exc
+        except OllamaClientError as exc:
+            raise IngestionServiceError(f"Embedding generation failed: {exc}") from exc
+        except QdrantClientError as exc:
+            raise IngestionServiceError(f"Qdrant write failed: {exc}") from exc
+
+        return IngestionResult(
+            processed_entries=len(entries),
+            upserted_points=upserted_points,
+            vector_size=vector_size,
+            collection_name=self.qdrant_client.collection_name,
+        )
+
+    def _build_points(self, entries: list[FAQEntry]) -> list[QdrantPoint]:
+        points: list[QdrantPoint] = []
+        expected_vector_size: int | None = None
+
+        for entry in entries:
+            vector = tuple(self.ollama_client.embed_text(self._build_embedding_text(entry)))
+            if expected_vector_size is None:
+                expected_vector_size = len(vector)
+            elif len(vector) != expected_vector_size:
+                raise IngestionServiceError(
+                    "Embedding dimensions are inconsistent across FAQ entries"
                 )
-        except RuntimeError as e:
-            raise RuntimeError(f"Failed to ensure collection: {e}") from e
 
-    async def _prepare_qdrant_points(
-        self,
-        entries: Sequence[FaqEntry],
-        result: IngestionResult,
-    ) -> list[PointStruct]:
-        """Prepare Qdrant PointStruct objects from FAQ entries.
-
-        Args:
-            entries: Sequence of FaqEntry objects.
-            result: IngestionResult object to record errors.
-
-        Returns:
-            List of PointStruct objects ready for upsert.
-        """
-        points: list[PointStruct] = []
-
-        for idx, entry in enumerate(entries):
-            try:
-                # Embed the question
-                vector = await self._embed_text(entry.question)
-
-                # Create point with FAQ data in payload
-                point = PointStruct(
-                    id=self._entry_id_to_point_id(entry.id, idx),
+            points.append(
+                QdrantPoint(
+                    id=entry.id,
                     vector=vector,
-                    payload={
-                        "faq_id": entry.id,
-                        "question": entry.question,
-                        "answer": entry.answer,
-                        "tags": entry.tags,
-                        "category": entry.category,
-                        "source": entry.source,
-                    },
+                    payload=entry.to_payload(),
                 )
-                points.append(point)
-
-            except Exception as e:
-                error_msg = f"Failed to embed: {str(e)}"
-                logger.warning(f"Entry {entry.id}: {error_msg}")
-                result.add_error(entry.id, error_msg)
-
-        logger.info(f"Prepared {len(points)} points for ingestion")
+            )
         return points
 
-    async def _embed_text(self, text: str) -> list[float]:
-        """Generate embedding for text.
-
-        Args:
-            text: Text to embed.
-
-        Returns:
-            Embedding vector as list of floats.
-
-        Raises:
-            RuntimeError: If embedding fails.
-        """
-        try:
-            return await self.ollama.embed_text(text)
-        except RuntimeError as e:
-            raise RuntimeError(f"Embedding failed for text: {e}") from e
-
-    @staticmethod
-    def _entry_id_to_point_id(entry_id: str, idx: int) -> int | str:
-        """Convert FAQ entry ID to Qdrant point ID.
-
-        Args:
-            entry_id: FAQ entry ID (may be string).
-            idx: Index of entry in batch.
-
-        Returns:
-            Point ID suitable for Qdrant (int or string).
-        """
-        # Try to use entry_id as integer if possible, fallback to string
-        try:
-            return int(entry_id)
-        except ValueError:
-            return entry_id
+    def _build_embedding_text(self, entry: FAQEntry) -> str:
+        parts = [entry.question, entry.answer]
+        if entry.category:
+            parts.append(f"Category: {entry.category}")
+        if entry.tags:
+            parts.append(f"Tags: {', '.join(entry.tags)}")
+        return "\n\n".join(parts)

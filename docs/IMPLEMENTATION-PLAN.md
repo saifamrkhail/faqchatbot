@@ -16,11 +16,15 @@ Turn the project definition into a sequence of small, verifiable implementation 
 ## Current Development Status
 
 - Phase 1 / Module 01 is complete.
-- The repository now contains the application scaffold under `app/`.
-- Central configuration, logging bootstrap, CLI entry logic, and `.env.example` are in place.
+- Phase 2 / Modules 02 and 03 are complete.
+- Phase 3 / Module 04 is complete.
+- The repository now contains the application scaffold, validated FAQ domain objects, repository access, external service clients, and the ingestion pipeline under `app/`.
+- The FAQ dataset now exists as `data/faq.json` and is loaded through the repository layer.
+- Central configuration now covers the FAQ data path plus Ollama and Qdrant timeouts.
 - The official project script is defined in `pyproject.toml` as `faqchatbot = "app.cli:main"`.
-- The current verified test baseline is `7 passed`.
-- The next implementation target is Phase 2, starting with the FAQ data model and repository layer.
+- The standalone ingestion entrypoint is available via `python -m scripts.ingest`.
+- The current verified test baseline is `37 passed`.
+- The next implementation target is Phase 4, starting with the retrieval engine.
 
 ## Phase Plan
 
