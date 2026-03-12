@@ -10,18 +10,22 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 
 ## Erst lesen
 
-1. `docs/PROJECT-DEFINITION.md`
-2. `docs/MODULES.md`
-3. `docs/IMPLEMENTATION-PLAN.md`
-4. `docs/modules/`
+1. `README.md`
+2. `docs/PROJECT-DEFINITION.md`
+3. `docs/MODULES.md`
+4. `docs/IMPLEMENTATION-PLAN.md`
+5. `docs/modules/`
 
 ## Aktueller Ist-Zustand
 
 - Planung und Modulstruktur sind in `docs/` ausgearbeitet.
 - Modul 01 ist als Grundgeruest angelegt.
 - `app/config.py`, `app/logging.py` und `app/cli.py` existieren.
-- `main.py` und `python -m app` starten aktuell das Scaffold und validieren die Konfiguration.
+- `python -m app` startet aktuell das Scaffold direkt aus der aktivierten `.venv`.
+- Der offizielle `uv`-Entry-Point ist in `pyproject.toml` gesetzt: `uv sync && uv run faqchatbot`.
 - `tests/` deckt die Basis fuer Config, Logging und CLI ab.
+- Der letzte verifizierte Teststand liegt bei `7 passed`.
+- `README.md` beschreibt den Python-Start und das Ausfuehren der Tests.
 - Die fachlichen Module ab `app/domain/`, `app/repositories/`, `app/infrastructure/`, `app/services/` und `app/ui/` sind nur als leere Pakete vorbereitet.
 
 ## Source of Truth
@@ -86,8 +90,10 @@ Wenn unklar ist, wo weitergemacht werden soll:
 
 - Dateien finden: `rg --files`
 - Inhalte suchen: `rg -n "pattern"`
-- Tests: `uv run pytest`
-- Aktuellen Platzhalter starten: `uv run python main.py`
+- Tests: `source .venv/bin/activate && pytest`
+- Tests mit `uv`: `UV_CACHE_DIR=.uv-cache uv run --no-sync pytest`
+- Aktuellen Platzhalter starten: `source .venv/bin/activate && python -m app`
+- Script-Entry-Point starten: `uv sync && uv run faqchatbot`
 
 ## Nicht verzetteln
 

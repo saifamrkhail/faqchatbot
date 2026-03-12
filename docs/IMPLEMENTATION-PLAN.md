@@ -13,6 +13,15 @@ Turn the project definition into a sequence of small, verifiable implementation 
 - Ollama is available through a configured base URL.
 - Qdrant is available locally or through Docker.
 
+## Current Development Status
+
+- Phase 1 / Module 01 is complete.
+- The repository now contains the application scaffold under `app/`.
+- Central configuration, logging bootstrap, CLI entry logic, and `.env.example` are in place.
+- The official project script is defined in `pyproject.toml` as `faqchatbot = "app.cli:main"`.
+- The current verified test baseline is `7 passed`.
+- The next implementation target is Phase 2, starting with the FAQ data model and repository layer.
+
 ## Phase Plan
 
 | Phase | Modules | Objective | Main Outputs | Exit Criteria |
