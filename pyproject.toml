@@ -1,9 +1,9 @@
 [project]
 name = "faqchatbot"
 version = "0.1.0"
-description = "Add your description here"
+description = "Local terminal-based FAQ chatbot scaffold"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 dependencies = []
 
 [dependency-groups]
@@ -12,3 +12,8 @@ dev = [
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.0.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra"

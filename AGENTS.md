@@ -18,10 +18,11 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 ## Aktueller Ist-Zustand
 
 - Planung und Modulstruktur sind in `docs/` ausgearbeitet.
-- Runtime-Code ist noch kaum vorhanden.
-- `main.py` ist aktuell nur ein Platzhalter.
-- `pyproject.toml` ist minimal und hat bisher nur Test-Dependencies im Dev-Group-Block.
-- Zielstruktur aus den Docs ist noch nicht umgesetzt.
+- Modul 01 ist als Grundgeruest angelegt.
+- `app/config.py`, `app/logging.py` und `app/cli.py` existieren.
+- `main.py` und `python -m app` starten aktuell das Scaffold und validieren die Konfiguration.
+- `tests/` deckt die Basis fuer Config, Logging und CLI ab.
+- Die fachlichen Module ab `app/domain/`, `app/repositories/`, `app/infrastructure/`, `app/services/` und `app/ui/` sind nur als leere Pakete vorbereitet.
 
 ## Source of Truth
 
@@ -78,7 +79,7 @@ Wenn unklar ist, wo weitergemacht werden soll:
 
 1. `git status --short` pruefen
 2. Docs gegen aktuellen Code abgleichen
-3. kleinstes offene Modul waehlen
+3. nach Modul 01 mit Modul 02 weitermachen
 4. erst Tests schreiben, dann Implementierung
 
 ## Nuetzliche Kommandos

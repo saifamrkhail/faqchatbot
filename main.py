@@ -1,6 +1,5 @@
-def main():
-    print("Hello from faqchatbot!")
+from app.cli import main
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
