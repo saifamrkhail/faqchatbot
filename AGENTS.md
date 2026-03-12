@@ -19,14 +19,17 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 ## Aktueller Ist-Zustand
 
 - Planung und Modulstruktur sind in `docs/` ausgearbeitet.
-- Modul 01 ist als Grundgeruest angelegt.
-- `app/config.py`, `app/logging.py` und `app/cli.py` existieren.
-- `python -m app` startet aktuell das Scaffold direkt aus der aktivierten `.venv`.
-- Der offizielle `uv`-Entry-Point ist in `pyproject.toml` gesetzt: `uv sync && uv run faqchatbot`.
-- `tests/` deckt die Basis fuer Config, Logging und CLI ab.
-- Der letzte verifizierte Teststand liegt bei `7 passed`.
-- `README.md` beschreibt den Python-Start und das Ausfuehren der Tests.
-- Die fachlichen Module ab `app/domain/`, `app/repositories/`, `app/infrastructure/`, `app/services/` und `app/ui/` sind nur als leere Pakete vorbereitet.
+- Phase 1 sowie Phase 2 und 3 sind umgesetzt.
+- `app/config.py`, `app/logging.py` und `app/cli.py` sind vorhanden und melden jetzt den Core-Service-Status statt nur ein Scaffold.
+- `data/faq.json` enthaelt 10 validierte FAQ-Eintraege aus `data/faq.txt`.
+- `app/domain/faq.py` und `app/repositories/faq_repository.py` decken Domainmodell, Validierung und JSON-Repository ab.
+- `app/infrastructure/ollama_client.py` und `app/infrastructure/qdrant_client.py` kapseln die externen HTTP-Integrationen.
+- `app/services/ingestion_service.py` und `scripts/ingest.py` implementieren die separate Ingestion-Pipeline.
+- Der offizielle `uv`-Entry-Point fuer die App ist weiterhin `uv sync && uv run faqchatbot`.
+- Die Ingestion laeuft separat ueber `python -m scripts.ingest` oder `uv run python -m scripts.ingest`.
+- `tests/` deckt jetzt Config, Logging, CLI, FAQ-Domain, Repository, Infrastruktur-Clients und Ingestion ab.
+- Der letzte verifizierte Teststand liegt bei `37 passed`.
+- Der naechste fachliche Implementierungsschritt ist Phase 4 / Modul 05 Retrieval Engine.
 
 ## Source of Truth
 
@@ -46,6 +49,74 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 8. Terminal UI
 9. Runtime and Deployment
 10. Quality Assurance and Delivery
+
+## Detaillierter Umsetzungsplan fuer Phase 2 und 3
+
+### Phase 2 - FAQ Data and Repository plus External Service Clients
+
+Ziel:
+
+- stabile FAQ-Domainobjekte
+- validierter Datenzugriff ohne Roh-JSON im Rest des Systems
+- kleine, kontrollierte Integrationsgrenzen fuer Ollama und Qdrant
+
+Status:
+
+- abgeschlossen
+
+Arbeitspakete Modul 02:
+
+1. `data/faq.json` aus dem bereitgestellten FAQ-Material erstellen
+2. in `app/domain/faq.py` ein validiertes FAQ-Domainmodell definieren
+3. klare Validierungsfehler fuer fehlende oder leere Pflichtfelder einfuehren
+4. in `app/repositories/faq_repository.py` einen JSON-Loader und Repository-Zugriff implementieren
+5. Repository so gestalten, dass spaetere Services nur mit Domainobjekten arbeiten
+6. Tests fuer gueltige Eintraege, ungueltige Datensaetze und Repository-Ladevorgaenge schreiben
+
+Arbeitspakete Modul 03:
+
+1. in `app/infrastructure/ollama_client.py` einen kleinen HTTP-Client fuer Embeddings und Generierung implementieren
+2. in `app/infrastructure/qdrant_client.py` einen kleinen HTTP-Client fuer Collection-Initialisierung, Upsert und Search implementieren
+3. kontrollierte Fehlerklassen fuer Ollama- und Qdrant-Fehler einfuehren
+4. Client-Erzeugung an `app.config.AppSettings` binden
+5. Tests fuer Request-Aufbau, Antwort-Mapping und Fehlerbehandlung schreiben
+
+Abschlusskriterien Phase 2:
+
+- FAQ-Daten werden aus `data/faq.json` validiert geladen
+- ungueltige FAQ-Datensaetze schlagen mit klaren Fehlern fehl
+- Ollama- und Qdrant-Clients lassen sich aus zentraler Konfiguration instanziieren
+- Infrastrukturfehler werden in kontrollierte Exceptions uebersetzt
+
+### Phase 3 - Ingestion Pipeline
+
+Ziel:
+
+- validierte FAQ-Eintraege offline einlesen
+- Embeddings erzeugen
+- Vektoren idempotent in Qdrant schreiben
+
+Status:
+
+- abgeschlossen
+
+Arbeitspakete Modul 04:
+
+1. in `app/services/ingestion_service.py` den Ingestion-Ablauf kapseln
+2. FAQ-Eintraege ueber das Repository laden
+3. Embeddings ueber den Ollama-Client erzeugen
+4. Qdrant-Collection bei Bedarf initialisieren oder verifizieren
+5. FAQ-Eintraege mit Payload und Vektor idempotent upserten
+6. Rueckgabeobjekt mit Anzahl der verarbeiteten Eintraege und Vektordimension definieren
+7. `scripts/ingest.py` als separaten Entry-Point fuer die Ingestion anlegen
+8. Tests fuer Orchestrierung, Collection-Bootstrap und Upsert-Verhalten schreiben
+
+Abschlusskriterien Phase 3:
+
+- die Ingestion kann alle FAQ-Eintraege erfolgreich verarbeiten
+- wiederholtes Ausfuehren bleibt idempotent
+- die ermittelte Vektordimension wird konsistent fuer die Collection verwendet
+- die Ingestion ist ein separater Schritt und nicht an den Chat-Start gekoppelt
 
 ## Harte Architekturregeln
 
@@ -83,18 +154,20 @@ Wenn unklar ist, wo weitergemacht werden soll:
 
 1. `git status --short` pruefen
 2. Docs gegen aktuellen Code abgleichen
-3. nach Modul 01 mit Modul 02 weitermachen
-4. erst Tests schreiben, dann Implementierung
+3. mit Phase 4 / Modul 05 Retrieval Engine weitermachen
+4. erst Retrieval-Tests schreiben, dann Implementierung und anschliessend gegen ingestierte Daten pruefen
 
 ## Nuetzliche Kommandos
 
 - Dateien finden: `rg --files`
 - Inhalte suchen: `rg -n "pattern"`
-- Tests: `source .venv/bin/activate && pytest`
+- Tests: `.venv/bin/python -m pytest`
 - Tests mit `uv`: `UV_CACHE_DIR=.uv-cache uv run --no-sync pytest`
-- Aktuellen Platzhalter starten: `source .venv/bin/activate && python -m app`
+- Status-Start der App: `.venv/bin/python -m app`
+- FAQ ingestieren: `.venv/bin/python -m scripts.ingest`
 - Script-Entry-Point starten: `uv sync && uv run faqchatbot`
+- Ingestion mit `uv`: `uv run python -m scripts.ingest`
 
 ## Nicht verzetteln
 
-Nicht mit Textual oder Docker anfangen, bevor Foundation, Datenmodell, Service-Clients, Ingestion und Retrieval stehen.
+Nicht mit Textual oder Docker anfangen, bevor Retrieval, Answer Generation und Chat Application stehen.

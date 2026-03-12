@@ -7,7 +7,8 @@ from app.config import AppSettings, SettingsError
 def test_build_startup_message_contains_key_runtime_targets() -> None:
     message = build_startup_message(AppSettings())
 
-    assert "faqchatbot scaffold ready" in message
+    assert "faqchatbot core services ready" in message
+    assert "faq=data/faq.json" in message
     assert "qdrant=http://localhost:6333" in message
     assert "ollama=http://localhost:11434" in message
 
