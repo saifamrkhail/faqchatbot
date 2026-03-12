@@ -16,7 +16,7 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 4. `docs/IMPLEMENTATION-PLAN.md`
 5. `docs/modules/`
 
-## Aktueller Ist-Zustand (2026-03-12) - PHASES 2, 3, & 4 COMPLETE ✅
+## Aktueller Ist-Zustand (2026-03-13) - PHASES 1-5 COMPLETE ✅
 
 ### Completed Phases
 
@@ -46,15 +46,27 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 - Sample FAQ dataset: `data/faq.json` (10 German FAQ entries)
 - Tests: 7 tests passing
 
+**Phase 5 (Module 05)**: ✅ COMPLETE - Retrieval Engine
+- RetrievalResult immutable domain model
+- Retriever service for semantic FAQ search
+- Question embedding via OllamaClient
+- Vector search via QdrantClient
+- Threshold-based relevance decision (configurable)
+- VectorStoreService for future extensibility
+- Tests: 30 new tests (15 unit + 15 integration)
+
 ### Integration Status
 
-**Merge Commit**: `4e58414` - Phase 2 & 3 merged with Phase 4
+**Merge Commits**:
+- `4e58414` - Phase 2 & 3 merged with Phase 4
+- `phase5` - Phase 5 implementation complete
 
-**All Tests Passing**: 37/37 ✅
+**All Tests Passing**: 67/67 ✅
 - Phase 1: 7 tests
 - Phase 2: 6 tests
 - Phase 3: 10 tests
 - Phase 4: 7 tests
+- Phase 5: 30 tests
 - Integration: 7 tests
 
 **Architecture Quality**: Production-ready with:
@@ -490,5 +502,300 @@ After Phase 4 completion, Phase 5 will implement the Retrieval Engine:
 - Semantic search in Qdrant
 - Score threshold evaluation
 - Ranked FAQ result
+
+---
+
+# PHASE 5 - RETRIEVAL ENGINE DETAILED IMPLEMENTATION PLAN
+
+## Current Status (as of 2026-03-13)
+
+- **Phase 1 (Module 01)**: ✅ COMPLETE - Foundation and Configuration
+- **Phase 2 (Module 02)**: ✅ COMPLETE - FAQ Domain & Repository
+- **Phase 3 (Module 03)**: ✅ COMPLETE - Ollama & Qdrant Clients
+- **Phase 4 (Module 04)**: ✅ COMPLETE - Ingestion Pipeline
+- **Phase 5 (Module 05)**: 👉 THIS PHASE - Retrieval Engine
+
+## Phase 5 Overview
+
+**Objective**: Build the semantic retrieval core that takes a user question, embeds it, searches Qdrant for relevant FAQs, and returns a structured decision (relevant match or fallback).
+
+**Module**: 05 - Retrieval Engine
+**Dependencies**: Module 02 (FAQEntry), Module 03 (OllamaClient, QdrantClient)
+**Branch**: `phase5`
+
+## Phase 5 Scope and Deliverables
+
+### Core Responsibilities
+
+1. Embed user questions using the same model as ingestion
+2. Search Qdrant for semantically similar FAQ entries
+3. Evaluate results against configurable score threshold
+4. Return structured decision: matched FAQ or fallback signal
+5. Support configurable top-k and score threshold parameters
+
+### Deliverables
+
+#### 1. `app/domain/retrieval_result.py`
+
+**Purpose**: Domain model for retrieval outcomes
+
+```python
+@dataclass(frozen=True, slots=True)
+class RetrievalResult:
+    """Result of FAQ retrieval from vector store."""
+
+    matched_entry: FAQEntry | None  # None if below threshold
+    score: float  # Similarity score from 0.0 to 1.0
+    top_k_results: list[tuple[FAQEntry, float]]  # All matches with scores
+    retrieved: bool  # True if score >= threshold
+```
+
+#### 2. `app/services/retriever.py`
+
+**Purpose**: Retrieval orchestration service
+
+**Responsibilities**:
+- Accept user question text
+- Embed question using OllamaClient
+- Search Qdrant using QdrantClient
+- Filter results by score threshold
+- Return structured RetrievalResult
+
+**Key Methods**:
+```python
+@dataclass(slots=True)
+class Retriever:
+    ollama_client: OllamaClient
+    qdrant_client: QdrantClient
+
+    @classmethod
+    def from_settings(cls, settings: AppSettings) -> "Retriever"
+
+    def retrieve(self, question: str) -> RetrievalResult:
+        """Find the best FAQ match for a user question."""
+```
+
+**Error Handling**:
+- `OllamaClientError` → `RetrieverError("Failed to embed question: ...")`
+- `QdrantClientError` → `RetrieverError("Failed to search: ...")`
+- Invalid input → `RetrieverError("Question must not be empty")`
+
+#### 3. `app/services/vector_store_service.py`
+
+**Purpose**: Vector store abstraction layer (optional, for future extensibility)
+
+**Responsibilities**:
+- Wrapper around Qdrant client for retrieval operations
+- Consistent error handling for vector operations
+- Isolation of Qdrant API details from Retriever
+
+**Key Methods**:
+```python
+@dataclass(slots=True)
+class VectorStoreService:
+    qdrant_client: QdrantClient
+
+    @classmethod
+    def from_settings(cls, settings: AppSettings) -> "VectorStoreService"
+
+    def search(self, vector: Sequence[float], limit: int) -> list[tuple[FAQEntry, float]]:
+        """Search for nearest FAQ entries by vector similarity."""
+```
+
+### Configuration Parameters (Already Available in AppSettings)
+
+```python
+top_k: int = 3  # Number of results to return
+score_threshold: float = 0.70  # Minimum confidence for match
+```
+
+## Phase 5 Implementation Steps (Detailed)
+
+### Step 1: Define Retrieval Domain Model
+- Create `app/domain/retrieval_result.py`
+- Define `RetrievalResult` dataclass
+- Include matched entry, score, full result list, retrieved flag
+
+### Step 2: Create Retriever Service Interface
+- Create `app/services/retriever.py`
+- Define `Retriever` class with dependency injection
+- Define `RetrieverError` exception class
+- Implement `from_settings()` factory method
+
+### Step 3: Implement Question Embedding
+- Method: `_embed_question(question: str) -> list[float]`
+- Call `OllamaClient.embed_text(question)`
+- Handle embedding errors gracefully
+- Validate non-empty result
+
+### Step 4: Implement Vector Search
+- Method: `_search_vector_store(vector: list[float]) -> list[tuple[FAQEntry, float]]`
+- Call `QdrantClient.search(vector, limit=top_k)`
+- Convert QdrantSearchResult to (FAQEntry, score) tuples
+- Validate payload contains expected FAQ fields
+
+### Step 5: Implement Threshold Evaluation
+- Method: `_evaluate_threshold(results: list[tuple[FAQEntry, float]]) -> RetrievalResult`
+- Select best match (first result)
+- Compare against score_threshold
+- Set retrieved flag and matched_entry accordingly
+- Include all results in top_k_results
+
+### Step 6: Wire the Retrieval Pipeline
+- Implement `retrieve(question: str) -> RetrievalResult`
+- Call embedding, search, and threshold methods
+- Wrap and handle all errors
+- Return structured RetrievalResult
+
+### Step 7: Create Optional VectorStoreService (Future-Proofing)
+- Create `app/services/vector_store_service.py`
+- Abstract Qdrant-specific details
+- Prepare for future vector store swaps
+
+### Step 8: Update Services Exports
+- Update `app/services/__init__.py`
+- Export Retriever, RetrievalResult, RetrieverError
+
+## Test Strategy
+
+### Unit Tests (`tests/test_retriever.py`)
+
+1. **Question Embedding**:
+   - Test that questions are embedded correctly
+   - Test error handling for empty questions
+   - Test error handling when Ollama is unavailable
+
+2. **Vector Search**:
+   - Test top-k search returns configured number of results
+   - Test search with mock Qdrant results
+   - Test error handling for search failures
+
+3. **Threshold Evaluation**:
+   - Test that high-score results trigger match
+   - Test that low-score results trigger fallback
+   - Test edge case at exactly threshold value
+   - Test with no results
+
+4. **End-to-End Retrieval**:
+   - Test full retrieve() with relevant question
+   - Test full retrieve() with irrelevant question
+   - Test with actual FAQ data structure
+   - Test error propagation and wrapping
+
+### Integration Tests (`tests/test_retrieval_integration.py`)
+
+1. **Retrieval with FAQ Data**:
+   - Load actual FAQ data from repository
+   - Ingest into Qdrant using IngestionService
+   - Query with test questions
+   - Verify correct FAQ is matched
+
+2. **Threshold Behavior**:
+   - Test with conservative threshold (e.g., 0.90)
+   - Test with loose threshold (e.g., 0.50)
+   - Verify fallback behavior transitions correctly
+
+3. **Top-K Configuration**:
+   - Test with top_k=1 (best match only)
+   - Test with top_k=5 (wider results)
+   - Verify correct number of results returned
+
+### Test Questions (Using FAQ Data)
+
+Test with questions that should match:
+- Close paraphrases of actual FAQ questions
+- Variations with same semantic meaning
+- Synonym variations
+
+Test with questions that should NOT match:
+- Completely unrelated topics
+- Questions in different language
+- Nonsense queries
+
+## Dependencies and Assumptions
+
+### Assumed to be Available (Phase 1-4 Deliverables)
+- `app/domain/faq.py` with FAQEntry model
+- `app/repositories/faq_repository.py` for loading FAQ
+- `app/infrastructure/ollama_client.py` for embeddings
+- `app/infrastructure/qdrant_client.py` for search
+- `app/services/ingestion_service.py` for test data preparation
+- Configuration in `app/config.py` with top_k and score_threshold
+- Sample FAQ data in `data/faq.json`
+
+### External Services (Must be Running)
+- **Ollama**: With embedding model deployed
+- **Qdrant**: With ingested FAQ vectors
+
+## Exit Criteria for Phase 5
+
+✅ **Phase 5 is complete when:**
+1. `app/domain/retrieval_result.py` defines RetrievalResult model
+2. `app/services/retriever.py` implements full retrieval pipeline
+3. Question embedding works with OllamaClient
+4. Vector search queries Qdrant correctly
+5. Threshold evaluation returns correct matched_entry
+6. Relevant questions return matched FAQ
+7. Irrelevant questions trigger fallback (retrieved=False)
+8. All unit and integration tests pass
+9. Top-k and score_threshold are configurable
+10. Errors are properly wrapped and reported
+
+## Files to Create/Modify
+
+### New Files
+- `app/domain/retrieval_result.py` (domain model)
+- `app/services/retriever.py` (retrieval service)
+- `app/services/vector_store_service.py` (optional abstraction)
+- `tests/test_retriever.py` (unit tests)
+- `tests/test_retrieval_integration.py` (integration tests)
+
+### Modified Files
+- `app/domain/__init__.py` (export RetrievalResult)
+- `app/services/__init__.py` (export Retriever, RetrieverError)
+- `CLAUDE.md` (update status after phase completion)
+
+## Architecture Diagram (Phase 5)
+
+```
+┌─────────────────┐
+│  User Question  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  Retriever Service      │
+│  - Embed question       │
+│  - Search Qdrant        │
+│  - Evaluate threshold   │
+└────┬─────────────┬──────┘
+     │             │
+     ▼             ▼
+┌──────────┐  ┌─────────────┐
+│ Ollama   │  │ Qdrant DB   │
+│ (Embed)  │  │ (Search)    │
+└──────────┘  └─────────────┘
+     │             │
+     └─────┬───────┘
+           │
+           ▼
+┌──────────────────────────┐
+│  RetrievalResult         │
+│  - matched_entry         │
+│  - score                 │
+│  - top_k_results         │
+│  - retrieved (bool)      │
+└──────────────────────────┘
+           │
+           ▼
+  (to Phase 6: Answer Generation)
+```
+
+## Next Phase (Phase 6)
+
+After Phase 5 completion, Phase 6 will implement Answer Generation:
+- Grounded prompt template from retrieved FAQ
+- Answer generation via Ollama
+- Fallback handling when retrieval fails
 
 ---
