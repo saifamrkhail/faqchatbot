@@ -5,19 +5,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 import os
+from pathlib import Path
 from typing import Mapping
 
 ENV_PREFIX = "FAQ_CHATBOT_"
 _VALID_LOG_LEVELS = {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"}
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_APP_NAME = "faqchatbot"
 DEFAULT_ENVIRONMENT = "development"
 DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_DEBUG = False
+DEFAULT_FAQ_DATA_PATH = "data/faq.json"
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_OLLAMA_GENERATE_MODEL = "qwen3:8b"
 DEFAULT_OLLAMA_EMBEDDING_MODEL = "nomic-embed-text"
+DEFAULT_OLLAMA_TIMEOUT_SECONDS = 30.0
 DEFAULT_QDRANT_URL = "http://localhost:6333"
 DEFAULT_QDRANT_COLLECTION_NAME = "faq_entries"
+DEFAULT_QDRANT_TIMEOUT_SECONDS = 30.0
 DEFAULT_TOP_K = 3
 DEFAULT_SCORE_THRESHOLD = 0.70
 DEFAULT_FALLBACK_MESSAGE = "Leider konnte ich Ihre Frage nicht verstehen."
@@ -35,11 +40,14 @@ class AppSettings:
     environment: str = DEFAULT_ENVIRONMENT
     log_level: str = DEFAULT_LOG_LEVEL
     debug: bool = DEFAULT_DEBUG
+    faq_data_path: str = DEFAULT_FAQ_DATA_PATH
     ollama_base_url: str = DEFAULT_OLLAMA_BASE_URL
     ollama_generate_model: str = DEFAULT_OLLAMA_GENERATE_MODEL
     ollama_embedding_model: str = DEFAULT_OLLAMA_EMBEDDING_MODEL
+    ollama_timeout_seconds: float = DEFAULT_OLLAMA_TIMEOUT_SECONDS
     qdrant_url: str = DEFAULT_QDRANT_URL
     qdrant_collection_name: str = DEFAULT_QDRANT_COLLECTION_NAME
+    qdrant_timeout_seconds: float = DEFAULT_QDRANT_TIMEOUT_SECONDS
     top_k: int = DEFAULT_TOP_K
     score_threshold: float = DEFAULT_SCORE_THRESHOLD
     fallback_message: str = DEFAULT_FALLBACK_MESSAGE
@@ -52,6 +60,7 @@ class AppSettings:
         environment = _get_string(env, "ENVIRONMENT", DEFAULT_ENVIRONMENT).lower()
         log_level = _parse_log_level(_get_string(env, "LOG_LEVEL", DEFAULT_LOG_LEVEL))
         debug = _parse_bool(_get_string(env, "DEBUG", str(DEFAULT_DEBUG)))
+        faq_data_path = _get_string(env, "FAQ_DATA_PATH", DEFAULT_FAQ_DATA_PATH)
         ollama_base_url = _get_string(env, "OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL)
         ollama_generate_model = _get_string(
             env, "OLLAMA_GENERATE_MODEL", DEFAULT_OLLAMA_GENERATE_MODEL
@@ -59,9 +68,29 @@ class AppSettings:
         ollama_embedding_model = _get_string(
             env, "OLLAMA_EMBEDDING_MODEL", DEFAULT_OLLAMA_EMBEDDING_MODEL
         )
+        ollama_timeout_seconds = _parse_float(
+            _get_string(
+                env,
+                "OLLAMA_TIMEOUT_SECONDS",
+                str(DEFAULT_OLLAMA_TIMEOUT_SECONDS),
+            ),
+            "OLLAMA_TIMEOUT_SECONDS",
+            minimum=0.1,
+            maximum=300.0,
+        )
         qdrant_url = _get_string(env, "QDRANT_URL", DEFAULT_QDRANT_URL)
         qdrant_collection_name = _get_string(
             env, "QDRANT_COLLECTION_NAME", DEFAULT_QDRANT_COLLECTION_NAME
+        )
+        qdrant_timeout_seconds = _parse_float(
+            _get_string(
+                env,
+                "QDRANT_TIMEOUT_SECONDS",
+                str(DEFAULT_QDRANT_TIMEOUT_SECONDS),
+            ),
+            "QDRANT_TIMEOUT_SECONDS",
+            minimum=0.1,
+            maximum=300.0,
         )
         top_k = _parse_int(
             _get_string(env, "TOP_K", str(DEFAULT_TOP_K)),
@@ -86,11 +115,14 @@ class AppSettings:
             environment=environment,
             log_level=log_level,
             debug=debug,
+            faq_data_path=faq_data_path,
             ollama_base_url=ollama_base_url,
             ollama_generate_model=ollama_generate_model,
             ollama_embedding_model=ollama_embedding_model,
+            ollama_timeout_seconds=ollama_timeout_seconds,
             qdrant_url=qdrant_url,
             qdrant_collection_name=qdrant_collection_name,
+            qdrant_timeout_seconds=qdrant_timeout_seconds,
             top_k=top_k,
             score_threshold=score_threshold,
             fallback_message=fallback_message,
@@ -112,6 +144,15 @@ def clear_settings_cache() -> None:
 @lru_cache(maxsize=1)
 def _load_settings() -> AppSettings:
     return AppSettings.from_env()
+
+
+def resolve_project_path(path_value: str | Path) -> Path:
+    """Resolve a project-relative path against the repository root."""
+
+    path = Path(path_value).expanduser()
+    if path.is_absolute():
+        return path
+    return (PROJECT_ROOT / path).resolve()
 
 
 def _get_string(env: Mapping[str, str], key: str, default: str) -> str:
