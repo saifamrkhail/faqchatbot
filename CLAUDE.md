@@ -16,7 +16,7 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 4. `docs/IMPLEMENTATION-PLAN.md`
 5. `docs/modules/`
 
-## Aktueller Ist-Zustand (2026-03-13) - PHASES 1-5 COMPLETE ✅
+## Aktueller Ist-Zustand (2026-03-13) - PHASES 1-6 COMPLETE ✅
 
 ### Completed Phases
 
@@ -55,18 +55,28 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 - VectorStoreService for future extensibility
 - Tests: 30 new tests (15 unit + 15 integration)
 
+**Phase 6 (Module 06)**: ✅ COMPLETE - Answer Generation
+- AnswerResponse immutable domain model
+- PromptTemplate for grounded prompt construction
+- AnswerGenerator service for answer generation
+- Grounded answers stay in FAQ context
+- Fallback messages when retrieval fails
+- Answer validation and whitespace cleaning
+- Tests: 32 new tests (16 unit + 16 integration)
+
 ### Integration Status
 
 **Merge Commits**:
 - `4e58414` - Phase 2 & 3 merged with Phase 4
 - `phase5` - Phase 5 implementation complete
 
-**All Tests Passing**: 67/67 ✅
+**All Tests Passing**: 99/99 ✅
 - Phase 1: 7 tests
 - Phase 2: 6 tests
 - Phase 3: 10 tests
 - Phase 4: 7 tests
 - Phase 5: 30 tests
+- Phase 6: 32 tests
 - Integration: 7 tests
 
 **Architecture Quality**: Production-ready with:
@@ -797,5 +807,322 @@ After Phase 5 completion, Phase 6 will implement Answer Generation:
 - Grounded prompt template from retrieved FAQ
 - Answer generation via Ollama
 - Fallback handling when retrieval fails
+
+---
+
+# PHASE 6 - ANSWER GENERATION DETAILED IMPLEMENTATION PLAN
+
+## Current Status (as of 2026-03-13)
+
+- **Phase 1 (Module 01)**: ✅ COMPLETE - Foundation and Configuration
+- **Phase 2 (Module 02)**: ✅ COMPLETE - FAQ Domain & Repository
+- **Phase 3 (Module 03)**: ✅ COMPLETE - Ollama & Qdrant Clients
+- **Phase 4 (Module 04)**: ✅ COMPLETE - Ingestion Pipeline
+- **Phase 5 (Module 05)**: ✅ COMPLETE - Retrieval Engine
+- **Phase 6 (Module 06)**: 👉 THIS PHASE - Answer Generation
+
+## Phase 6 Overview
+
+**Objective**: Build the grounded answer generation layer that takes a user question and a retrieved FAQ entry, constructs a grounded prompt, and generates a short factual answer. If retrieval fails (below threshold), return a configured fallback message instead of forcing an answer.
+
+**Module**: 06 - Answer Generation
+**Dependencies**: Module 03 (OllamaClient), Module 05 (RetrievalResult, Retriever)
+**Branch**: `phase6`
+
+## Phase 6 Scope and Deliverables
+
+### Core Responsibilities
+
+1. Build grounded prompts from user question + FAQ context
+2. Generate answers via OllamaClient with proper constraints
+3. Handle fallback scenarios (weak retrieval, generation failure)
+4. Return structured answer response objects
+5. Support answer style customization
+
+### Deliverables
+
+#### 1. `app/domain/answer_response.py`
+
+**Purpose**: Domain model for answer generation responses
+
+```python
+@dataclass(frozen=True, slots=True)
+class AnswerResponse:
+    """Result of answer generation."""
+
+    answer: str | None             # Generated answer or None if fallback
+    confidence: float              # Retrieval confidence 0.0-1.0
+    source_faq_id: str | None     # FAQ entry used or None if fallback
+    is_fallback: bool              # True if fallback message
+    used_retrieval: bool           # True if retrieved FAQ was used
+```
+
+#### 2. `app/services/answer_generator.py`
+
+**Purpose**: Answer generation service orchestrating the generation pipeline
+
+**Key Components**:
+
+- `AnswerGenerator`: Main service class
+  - Takes RetrievalResult
+  - Builds grounded prompt if retrieved
+  - Generates answer via OllamaClient
+  - Returns AnswerResponse
+
+- `PromptTemplate`: Configurable prompt builder
+  - System prompt for grounding
+  - Format: question + FAQ context
+  - Customizable instructions
+
+- `AnswerGeneratorError`: Custom exception class
+
+**Key Methods**:
+```python
+@dataclass(slots=True)
+class AnswerGenerator:
+    ollama_client: OllamaClient
+
+    @classmethod
+    def from_settings(cls, settings: AppSettings) -> "AnswerGenerator"
+
+    def generate(self, question: str, retrieval: RetrievalResult) -> AnswerResponse:
+        """Generate answer from question and retrieval result."""
+```
+
+#### 3. `app/domain/prompt_template.py`
+
+**Purpose**: Prompt construction with grounding
+
+```python
+@dataclass(frozen=True, slots=True)
+class PromptTemplate:
+    """Template for grounded answer generation."""
+
+    def build(self, question: str, faq_entry: FAQEntry) -> str:
+        """Build grounded prompt from question and FAQ."""
+
+        return f"""You are a helpful FAQ assistant. Answer the user's question \
+using ONLY the provided FAQ context. Be concise and factual.
+
+User Question: {question}
+
+FAQ Context:
+Q: {faq_entry.question}
+A: {faq_entry.answer}
+Category: {faq_entry.category}
+Tags: {', '.join(faq_entry.tags)}
+
+Answer:"""
+```
+
+### Configuration Parameters (Already Available in AppSettings)
+
+```python
+fallback_message: str = "Leider konnte ich Ihre Frage nicht verstehen."
+```
+
+## Phase 6 Implementation Steps (Detailed)
+
+### Step 1: Define Answer Response Domain Model
+- Create `app/domain/answer_response.py`
+- Define `AnswerResponse` dataclass
+- Include answer, confidence, source_faq_id, is_fallback, used_retrieval
+
+### Step 2: Define Prompt Template
+- Create `app/domain/prompt_template.py`
+- Define `PromptTemplate` with configurable instructions
+- Implement `build(question, faq_entry)` method
+- Support different languages/styles
+
+### Step 3: Create AnswerGenerator Service Interface
+- Create `app/services/answer_generator.py`
+- Define `AnswerGenerator` class with dependency injection
+- Define `AnswerGeneratorError` exception class
+- Implement `from_settings()` factory method
+
+### Step 4: Implement Prompt Building
+- Method: `_build_prompt(question: str, faq_entry: FAQEntry) -> str`
+- Use PromptTemplate to construct grounded prompt
+- Include question + FAQ context + instructions
+- Validate non-empty results
+
+### Step 5: Implement Answer Generation
+- Method: `_generate_answer(prompt: str) -> str`
+- Call `OllamaClient.generate(prompt)`
+- Clean and validate generated answer
+- Handle generation errors gracefully
+
+### Step 6: Implement Fallback Handling
+- Method: `_get_fallback_answer() -> str`
+- Return configured fallback message
+- Log fallback usage
+- Track fallback statistics
+
+### Step 7: Wire the Generation Pipeline
+- Implement `generate(question: str, retrieval: RetrievalResult) -> AnswerResponse`
+- Check if retrieval.retrieved == True
+- If retrieved: build prompt → generate answer
+- If fallback: return fallback message
+- Wrap all errors with AnswerGeneratorError
+
+### Step 8: Update Services Exports
+- Update `app/services/__init__.py`
+- Export AnswerGenerator, AnswerGeneratorError
+- Update `app/domain/__init__.py`
+- Export AnswerResponse, PromptTemplate
+
+## Test Strategy
+
+### Unit Tests (`tests/test_answer_generator.py`)
+
+1. **Prompt Building**:
+   - Test prompt construction with FAQ data
+   - Test template with different languages
+   - Test empty/null FAQ handling
+   - Test special characters escaping
+
+2. **Answer Generation**:
+   - Test successful generation with mock Ollama
+   - Test error handling for generation failure
+   - Test answer cleaning/validation
+   - Test timeout handling
+
+3. **Fallback Behavior**:
+   - Test fallback for non-retrieved results
+   - Test fallback message configuration
+   - Test fallback vs generated answer selection
+   - Test error fallback scenarios
+
+4. **End-to-End Generation**:
+   - Test full pipeline with retrieved FAQ
+   - Test full pipeline with non-retrieved FAQ
+   - Test error propagation and wrapping
+   - Test response structure validation
+
+### Integration Tests (`tests/test_answer_generation_integration.py`)
+
+1. **Generation with Real Data**:
+   - Load actual FAQ data
+   - Test answer generation for FAQ questions
+   - Verify answers stay grounded in FAQ
+   - Test multiple different FAQs
+
+2. **Fallback Behavior**:
+   - Test with low-score retrieval
+   - Test with no retrieval
+   - Verify fallback messages returned
+   - Verify source_faq_id is None
+
+3. **Error Handling**:
+   - Test with unavailable Ollama
+   - Test with malformed FAQ data
+   - Verify proper error messages
+   - Verify graceful degradation
+
+### Test Questions (Using FAQ Data)
+
+Test with actual FAQ entries:
+- Questions that match FAQ (high retrieval score)
+- Questions that don't match (low retrieval score)
+- Questions with typos/variations
+- Verify answers use FAQ context
+
+## Dependencies and Assumptions
+
+### Assumed to be Available (Phase 1-5)
+- `app/domain/faq.py` with FAQEntry model
+- `app/domain/retrieval_result.py` with RetrievalResult
+- `app/services/retriever.py` with Retriever service
+- `app/infrastructure/ollama_client.py` with generate() method
+- Configuration in `app/config.py` with fallback_message
+- Sample FAQ data in `data/faq.json`
+
+### External Services (Must be Running)
+- **Ollama**: With generation model deployed (qwen3:8b)
+
+## Exit Criteria for Phase 6
+
+✅ **Phase 6 is complete when:**
+1. `app/domain/answer_response.py` defines AnswerResponse model
+2. `app/domain/prompt_template.py` implements prompt building
+3. `app/services/answer_generator.py` implements full generation
+4. Prompt building works with FAQ data
+5. Answer generation works via OllamaClient
+6. Fallback handling returns correct messages
+7. Answers stay grounded in FAQ context
+8. All unit and integration tests pass
+9. Error handling properly wraps exceptions
+10. Configuration parameters work
+
+## Files to Create/Modify
+
+### New Files
+- `app/domain/answer_response.py` (domain model)
+- `app/domain/prompt_template.py` (prompt template)
+- `app/services/answer_generator.py` (generation service)
+- `tests/test_answer_generator.py` (unit tests)
+- `tests/test_answer_generation_integration.py` (integration tests)
+- `docs/PHASE6-IMPLEMENTATION.md` (implementation docs)
+- `docs/PHASE6-VERIFICATION.md` (verification guide)
+
+### Modified Files
+- `app/domain/__init__.py` (export models)
+- `app/services/__init__.py` (export service)
+- `CLAUDE.md` (update status)
+
+## Architecture Diagram (Phase 6)
+
+```
+Question + RetrievalResult
+     │
+     ▼
+AnswerGenerator.generate()
+     │
+     ├─► Check retrieval.retrieved
+     │
+     ├─► [YES] Build grounded prompt
+     │   └─► PromptTemplate.build(question, faq)
+     │       → prompt: "You are a FAQ assistant..."
+     │
+     ├─► [YES] Generate answer
+     │   └─► OllamaClient.generate(prompt)
+     │       → answer: "The answer is..."
+     │
+     └─► [NO] Get fallback
+         └─► return fallback_message
+
+AnswerResponse
+├─ answer: str (generated or fallback)
+├─ confidence: float (retrieval score)
+├─ source_faq_id: str | None
+├─ is_fallback: bool
+└─ used_retrieval: bool
+     │
+     ▼
+  (to Phase 7: Chat Application Service)
+```
+
+## Integration with Previous Phases
+
+### Phase 1 (Foundation)
+- Uses `AppSettings` for configuration
+- Uses logging infrastructure
+
+### Phase 3 (Ollama Client)
+- Calls `OllamaClient.generate(prompt)` for answer generation
+- Wraps generation errors
+
+### Phase 5 (Retriever)
+- Consumes `RetrievalResult` from retriever
+- Checks `retrieval.retrieved` flag
+- Uses `matched_entry` for grounding
+- Uses `score` for confidence
+
+## Next Phase (Phase 7)
+
+After Phase 6 completion, Phase 7 will implement Chat Application Service:
+- Orchestrate one full chat turn (question → retrieval → generation)
+- Combine Retriever + AnswerGenerator
+- Return final ChatResponse to UI
 
 ---
