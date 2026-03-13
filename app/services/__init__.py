@@ -2,6 +2,7 @@
 """Service package exports."""
 
 from app.services.answer_generator import AnswerGenerator, AnswerGeneratorError
+from app.services.chat_service import ChatService, ChatServiceError
 from app.services.ingestion_service import (
     IngestionResult,
     IngestionService,
@@ -13,6 +14,8 @@ from app.services.vector_store_service import VectorStoreError, VectorStoreServi
 __all__ = [
     "AnswerGenerator",
     "AnswerGeneratorError",
+    "ChatService",
+    "ChatServiceError",
     "IngestionResult",
     "IngestionService",
     "IngestionServiceError",
