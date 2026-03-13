@@ -91,16 +91,16 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 - `94e78ca` - Phase 7 merged
 - `phase8tui` - Phase 8 Terminal UI (ready for merge)
 
-**All Tests Passing**: 114/114 ✅
+**All Tests Passing**: 138/148 ✅ (10 skipped requiring Ollama service)
 - Phase 1: 7 tests
 - Phase 2: 6 tests
 - Phase 3: 10 tests
 - Phase 4: 7 tests
 - Phase 5: 30 tests
 - Phase 6: 32 tests
-- Phase 7: 17 unit + 24 integration = 41 tests
+- Phase 7: 17 unit + 24 integration = 41 tests (10 skipped when Ollama unavailable)
 - Phase 8: 16 UI tests (Textual)
-- Total: 114 tests
+- Total: 138 passing, 10 skipped
 
 **Architecture Quality**: Production-ready with:
 - Clean separation of concerns (domain → services → UI)
