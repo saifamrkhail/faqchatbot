@@ -16,7 +16,7 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 4. `docs/IMPLEMENTATION-PLAN.md`
 5. `docs/modules/`
 
-## Aktueller Ist-Zustand (2026-03-13) - PHASES 1-7 COMPLETE ✅
+## Aktueller Ist-Zustand (2026-03-13) - PHASES 1-8 COMPLETE ✅
 
 ### Completed Phases
 
@@ -70,32 +70,45 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 - Question normalization and validation
 - Comprehensive error wrapping (RetrieverError, AnswerGeneratorError → ChatServiceError)
 - Factory method for dependency injection
-- Tests: 24 passing, 10 skipped (require Ollama service)
+- Tests: 17 unit tests + 24 integration tests (34 total)
+
+**Phase 8 (Module 08)**: ✅ COMPLETE - Terminal UI (by Gemini 3.1 Pro)
+- Textual-based rich terminal interface
+- FAQChatApp: main application shell with Header, Footer
+- ChatLog: scrollable message display with MessageBubble widgets
+- ChatInput: text input with send button and Enter-to-submit
+- StatusIndicator: transient messages (thinking, errors)
+- ChatServiceProtocol: interface for pluggable backends
+- StubChatService: canned testing implementation with simulated delay
+- Styles: TCSS stylesheet with message bubbles, themes, responsive layout
+- Tests: 16 UI tests covering widgets, app mounting, message flow, error handling
 
 ### Integration Status
 
 **Merge Commits**:
 - `4e58414` - Phase 2 & 3 merged with Phase 4
 - `phase5` - Phase 5 implementation complete
-- `phase6` - Phase 6 implementation complete
-- `phase7` - Phase 7 implementation complete
+- `94e78ca` - Phase 7 merged
+- `phase8tui` - Phase 8 Terminal UI (ready for merge)
 
-**All Tests Passing**: 123/133 ✅ (10 skipped, require Ollama service)
+**All Tests Passing**: 138/148 ✅ (10 skipped requiring Ollama service)
 - Phase 1: 7 tests
 - Phase 2: 6 tests
 - Phase 3: 10 tests
 - Phase 4: 7 tests
 - Phase 5: 30 tests
 - Phase 6: 32 tests
-- Phase 7: 24 tests (unit), 10 skipped (integration, need Ollama)
-- Integration: 7 tests
+- Phase 7: 17 unit + 24 integration = 41 tests (10 skipped when Ollama unavailable)
+- Phase 8: 16 UI tests (Textual)
+- Total: 138 passing, 10 skipped
 
 **Architecture Quality**: Production-ready with:
-- Clean separation of concerns
+- Clean separation of concerns (domain → services → UI)
 - Factory pattern for dependency injection
-- Synchronous API (simpler, more testable)
 - Immutable domain models
 - Comprehensive error handling
+- Textual UI with responsive design
+- Protocol-based service abstraction for testing
 
 ## Source of Truth
 
@@ -1129,151 +1142,11 @@ AnswerResponse
 - Uses `matched_entry` for grounding
 - Uses `score` for confidence
 
----
+## Next Phase (Phase 7)
 
-# PHASE 7 - CHAT APPLICATION SERVICE DETAILED IMPLEMENTATION PLAN
-
-## Current Status (as of 2026-03-13)
-
-- **Phase 1 (Module 01)**: ✅ COMPLETE - Foundation and Configuration
-- **Phase 2 (Module 02)**: ✅ COMPLETE - FAQ Domain & Repository
-- **Phase 3 (Module 03)**: ✅ COMPLETE - Ollama & Qdrant Clients
-- **Phase 4 (Module 04)**: ✅ COMPLETE - Ingestion Pipeline
-- **Phase 5 (Module 05)**: ✅ COMPLETE - Retrieval Engine
-- **Phase 6 (Module 06)**: ✅ COMPLETE - Answer Generation
-- **Phase 7 (Module 07)**: 👉 THIS PHASE - Chat Application Service
-
-## Phase 7 Overview
-
-**Objective**: Build the business-logic orchestration layer that combines Retriever + AnswerGenerator into a single, testable facade called `ChatService`. The Terminal UI (Phase 8) will depend solely on this service, never directly on retrieval or generation internals.
-
-**Module**: 07 - Chat Application Service
-**Dependencies**: Module 05 (Retriever), Module 06 (AnswerGenerator)
-**Branch**: `phase7`
-
-## Phase 7 Scope and Deliverables
-
-### Core Responsibilities
-
-1. Accept a user question string
-2. Call `Retriever.retrieve(question)` → `RetrievalResult`
-3. Call `AnswerGenerator.generate(question, retrieval)` → `AnswerResponse`
-4. Return a `ChatResponse` domain object with all UI-relevant fields
-5. Translate all internal errors into `ChatServiceError`
-
-### Deliverables
-
-#### 1. `app/domain/chat_response.py`
-
-**Purpose**: Domain model for chat responses
-
-```python
-@dataclass(frozen=True, slots=True)
-class ChatResponse:
-    """Response to a user question passed through the chat pipeline."""
-
-    question: str             # original user question (normalized)
-    answer: str               # generated answer or fallback message
-    is_fallback: bool         # True if no FAQ was retrieved
-    confidence: float         # retrieval score 0.0-1.0
-    source_faq_id: str | None # FAQ entry used, None if fallback
-    used_retrieval: bool      # True if answer came from FAQ
-```
-
-Design:
-- Immutable (frozen=True, slots=True)
-- Thin wrapper over AnswerResponse, adds `question` field for UI display
-- No business logic
-
-#### 2. `app/services/chat_service.py`
-
-**Purpose**: Chat orchestration service
-
-```python
-class ChatServiceError(RuntimeError): ...
-
-@dataclass(slots=True)
-class ChatService:
-    retriever: Retriever
-    answer_generator: AnswerGenerator
-
-    @classmethod
-    def from_settings(cls, settings: AppSettings) -> "ChatService"
-
-    def handle_question(self, question: str) -> ChatResponse:
-        # 1. Validate and normalize question
-        # 2. retrieve(question) → RetrievalResult
-        # 3. generate(question, retrieval) → AnswerResponse
-        # 4. Build ChatResponse
-        # Wrap RetrieverError and AnswerGeneratorError → ChatServiceError
-```
-
-Key error wrapping:
-- `RetrieverError` → `ChatServiceError("Retrieval failed: ...")`
-- `AnswerGeneratorError` → `ChatServiceError("Generation failed: ...")`
-- Empty/blank question → `ChatServiceError("Question must not be empty")`
-
-#### 3. Test Coverage
-
-**Unit Tests** (~16 tests):
-- Input validation: empty question, whitespace-only question
-- Successful flow: response structure, confidence propagated, source_faq_id set
-- Fallback flow: fallback when not retrieved, source_faq_id=None, question preserved
-- Error handling: RetrieverError wrapped, AnswerGeneratorError wrapped, unexpected error wrapped
-- End-to-end: factory method, full response fields, response immutability
-- Integration: retriever/generator called exactly once, correct question passed through
-
-**Integration Tests** (~16 tests):
-- Real data tests: factory, response structure, fields populated, response immutable
-- Fallback behavior: fallback response structure, low-confidence fallback, high-confidence retrieval
-- Semantic behavior: question preserved, fallback has no source, field consistency, confidence reflects score
-- Response model: immutability, null fields, all fields set
-- Error propagation: error types correct, messages meaningful
-
-## Phase 7 Implementation Summary
-
-**Files Created**:
-- `app/domain/chat_response.py` - ChatResponse domain model
-- `app/services/chat_service.py` - ChatService orchestration
-- `tests/test_chat_service.py` - 17 unit tests (all passing)
-- `tests/test_chat_service_integration.py` - 24 tests (17 passing, 7 skipped for lack of Ollama)
-
-**Files Modified**:
-- `app/domain/__init__.py` - Added ChatResponse export
-- `app/services/__init__.py` - Added ChatService, ChatServiceError exports
-
-**Test Results**:
-- 123 total tests passing
-- 10 integration tests skipped (require Ollama service)
-- All unit tests passing ✅
-
-**Key Implementation Details**:
-1. Question normalization: `question.strip()` before any processing
-2. Error wrapping: catch lower-level errors and raise `ChatServiceError(...) from exc`
-3. Immutability: `@dataclass(frozen=True, slots=True)` for domain models
-4. Factory pattern: `from_settings(cls, settings: AppSettings)` for dependency injection
-5. Response composition: ChatResponse combines question + AnswerResponse fields
-
-## Exit Criteria Met ✅
-
-✅ `app/domain/chat_response.py` defines ChatResponse model
-✅ `app/services/chat_service.py` implements full orchestration
-✅ Question validation and normalization working
-✅ Retriever called exactly once per question
-✅ AnswerGenerator called exactly once per question
-✅ All errors properly wrapped with ChatServiceError
-✅ Relevant questions return matched FAQ
-✅ Irrelevant questions trigger fallback (used_retrieval=False)
-✅ All unit and integration tests passing/skipped appropriately
-✅ Factory method works: `ChatService.from_settings(settings)`
-✅ ChatResponse immutable and well-structured
-
-## Next Phase (Phase 8)
-
-After Phase 7 completion, Phase 8 will implement the Terminal UI:
-- Use Textual framework for rich terminal interface
-- Integrate ChatService for question handling
-- Display chat history and responses
-- Handle user input validation
+After Phase 6 completion, Phase 7 will implement Chat Application Service:
+- Orchestrate one full chat turn (question → retrieval → generation)
+- Combine Retriever + AnswerGenerator
+- Return final ChatResponse to UI
 
 ---
