@@ -1,4 +1,4 @@
-"""CLI entrypoint for the project scaffold."""
+"""CLI entrypoint for the FAQ chatbot."""
 
 from __future__ import annotations
 
@@ -20,8 +20,23 @@ def build_startup_message(settings: AppSettings) -> str:
     )
 
 
+def _run_tui(settings: AppSettings) -> int:
+    """Launch the Textual terminal UI."""
+
+    from app.ui import FAQChatApp, StubChatService
+
+    # Use StubChatService until Module 07 provides the real service.
+    service = StubChatService()
+    app = FAQChatApp(chat_service=service, title=settings.app_name)
+    app.run()
+    return 0
+
+
 def main() -> int:
-    """Start the current scaffold and validate configuration eagerly."""
+    """Start the chatbot application.
+
+    Uses ``--tui`` flag or defaults to status-print mode.
+    """
 
     try:
         settings = get_settings()
@@ -30,6 +45,13 @@ def main() -> int:
         return 1
 
     logger = configure_logging(settings)
+
+    tui_mode = "--tui" in sys.argv
+
+    if tui_mode:
+        logger.info("Launching Terminal UI")
+        return _run_tui(settings)
+
     logger.info("Application core services initialized")
     print(build_startup_message(settings))
     return 0
