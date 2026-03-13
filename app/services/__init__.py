@@ -6,5 +6,15 @@ from app.services.ingestion_service import (
     IngestionService,
     IngestionServiceError,
 )
+from app.services.retriever import Retriever, RetrieverError
+from app.services.vector_store_service import VectorStoreError, VectorStoreService
 
-__all__ = ["IngestionResult", "IngestionService", "IngestionServiceError"]
+__all__ = [
+    "IngestionResult",
+    "IngestionService",
+    "IngestionServiceError",
+    "Retriever",
+    "RetrieverError",
+    "VectorStoreError",
+    "VectorStoreService",
+]
