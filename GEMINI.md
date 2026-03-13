@@ -19,12 +19,12 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 ## Aktueller Ist-Zustand
 
 - Planung und Modulstruktur sind in `docs/` ausgearbeitet.
-- Modul 01 ist als Grundgeruest angelegt.
+- Phase 1 bis 8 sind umgesetzt.
 - `app/config.py`, `app/logging.py` und `app/cli.py` existieren.
 - `python -m app` startet aktuell das Scaffold direkt aus der aktivierten `.venv`.
-- Der offizielle `uv`-Entry-Point ist in `pyproject.toml` gesetzt: `uv sync && uv run faqchatbot`.
-- `tests/` deckt die Basis fuer Config, Logging und CLI ab.
-- Der letzte verifizierte Teststand liegt bei `7 passed`.
+- Der offizielle `uv`-Entry-Point ist in `pyproject.toml` gesetzt: `uv sync && uv run faqchatbot --tui`.
+- `tests/` deckt die Basis fuer Config, Logging, CLI, API und UI ab.
+- Der letzte verifizierte Teststand liegt bei `114 passed`.
 - `README.md` beschreibt den Python-Start und das Ausfuehren der Tests.
 - Die fachlichen Module ab `app/domain/`, `app/repositories/`, `app/infrastructure/`, `app/services/` und `app/ui/` sind nur als leere Pakete vorbereitet.
 
@@ -83,8 +83,8 @@ Wenn unklar ist, wo weitergemacht werden soll:
 
 1. `git status --short` pruefen
 2. Docs gegen aktuellen Code abgleichen
-3. nach Modul 01 mit Modul 02 weitermachen
-4. erst Tests schreiben, dann Implementierung
+3. nach Modul 08 mit Modul 09 (Runtime and Deployment) weitermachen
+4. erst Tests/Checks schreiben, dann Implementierung
 
 ## Nuetzliche Kommandos
 

@@ -19,17 +19,14 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 ## Aktueller Ist-Zustand
 
 - Planung und Modulstruktur sind in `docs/` ausgearbeitet.
-- Phase 1 sowie Phase 2 und 3 sind umgesetzt.
-- `app/config.py`, `app/logging.py` und `app/cli.py` sind vorhanden und melden jetzt den Core-Service-Status statt nur ein Scaffold.
-- `data/faq.json` enthaelt 10 validierte FAQ-Eintraege aus `data/faq.txt`.
-- `app/domain/faq.py` und `app/repositories/faq_repository.py` decken Domainmodell, Validierung und JSON-Repository ab.
-- `app/infrastructure/ollama_client.py` und `app/infrastructure/qdrant_client.py` kapseln die externen HTTP-Integrationen.
-- `app/services/ingestion_service.py` und `scripts/ingest.py` implementieren die separate Ingestion-Pipeline.
+- Phase 1 bis 8 sind umgesetzt.
+- `app/config.py`, `app/logging.py` und `app/cli.py` sind vorhanden.
+- Das Kernsystem mit Embedding, Retrieval Service, Answer Generator und der Chat-Pipeline existiert.
+- Die Kommandozeile (`app/cli.py`) bietet eine CLI und eine TUI.
 - Der offizielle `uv`-Entry-Point fuer die App ist weiterhin `uv sync && uv run faqchatbot`.
-- Die Ingestion laeuft separat ueber `python -m scripts.ingest` oder `uv run python -m scripts.ingest`.
-- `tests/` deckt jetzt Config, Logging, CLI, FAQ-Domain, Repository, Infrastruktur-Clients und Ingestion ab.
-- Der letzte verifizierte Teststand liegt bei `37 passed`.
-- Der naechste fachliche Implementierungsschritt ist Phase 4 / Modul 05 Retrieval Engine.
+- `tests/` deckt jetzt Config, Logging, CLI, FAQ-Domain, Repository, Infrastruktur, Pipeline und das TUI ab.
+- Der letzte verifizierte Teststand liegt bei `114 passed`.
+- Der naechste fachliche Implementierungsschritt ist Phase 9 / Modul 09 Runtime and Deployment.
 
 ## Source of Truth
 
@@ -154,8 +151,8 @@ Wenn unklar ist, wo weitergemacht werden soll:
 
 1. `git status --short` pruefen
 2. Docs gegen aktuellen Code abgleichen
-3. mit Phase 4 / Modul 05 Retrieval Engine weitermachen
-4. erst Retrieval-Tests schreiben, dann Implementierung und anschliessend gegen ingestierte Daten pruefen
+3. mit Phase 9 / Modul 09 Runtime and Deployment weitermachen
+4. Setup validieren und Release cutten
 
 ## Nuetzliche Kommandos
 

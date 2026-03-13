@@ -5,6 +5,8 @@ description = "Local terminal-based FAQ chatbot scaffold"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
+    "aiohttp>=3.9.0",
+    "qdrant-client>=1.0.0,<2.0.0",
     "textual>=3.0.0",
 ]
 
@@ -22,3 +24,13 @@ dev = [
 pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-ra"
+
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.uv]
+package = true
