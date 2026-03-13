@@ -16,7 +16,7 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 4. `docs/IMPLEMENTATION-PLAN.md`
 5. `docs/modules/`
 
-## Aktueller Ist-Zustand (2026-03-13) - PHASES 1-6 COMPLETE ✅
+## Aktueller Ist-Zustand (2026-03-13) - PHASES 1-8 COMPLETE ✅
 
 ### Completed Phases
 
@@ -64,27 +64,51 @@ Lokaler, terminalbasierter FAQ-RAG-Chatbot mit Textual, Ollama und Qdrant. Antwo
 - Answer validation and whitespace cleaning
 - Tests: 32 new tests (16 unit + 16 integration)
 
+**Phase 7 (Module 07)**: ✅ COMPLETE - Chat Application Service
+- ChatResponse immutable domain model with all UI-relevant fields
+- ChatService orchestrates Retriever + AnswerGenerator pipeline
+- Question normalization and validation
+- Comprehensive error wrapping (RetrieverError, AnswerGeneratorError → ChatServiceError)
+- Factory method for dependency injection
+- Tests: 17 unit tests + 24 integration tests (34 total)
+
+**Phase 8 (Module 08)**: ✅ COMPLETE - Terminal UI (by Gemini 3.1 Pro)
+- Textual-based rich terminal interface
+- FAQChatApp: main application shell with Header, Footer
+- ChatLog: scrollable message display with MessageBubble widgets
+- ChatInput: text input with send button and Enter-to-submit
+- StatusIndicator: transient messages (thinking, errors)
+- ChatServiceProtocol: interface for pluggable backends
+- StubChatService: canned testing implementation with simulated delay
+- Styles: TCSS stylesheet with message bubbles, themes, responsive layout
+- Tests: 16 UI tests covering widgets, app mounting, message flow, error handling
+
 ### Integration Status
 
 **Merge Commits**:
 - `4e58414` - Phase 2 & 3 merged with Phase 4
 - `phase5` - Phase 5 implementation complete
+- `94e78ca` - Phase 7 merged
+- `phase8tui` - Phase 8 Terminal UI (ready for merge)
 
-**All Tests Passing**: 99/99 ✅
+**All Tests Passing**: 114/114 ✅
 - Phase 1: 7 tests
 - Phase 2: 6 tests
 - Phase 3: 10 tests
 - Phase 4: 7 tests
 - Phase 5: 30 tests
 - Phase 6: 32 tests
-- Integration: 7 tests
+- Phase 7: 17 unit + 24 integration = 41 tests
+- Phase 8: 16 UI tests (Textual)
+- Total: 114 tests
 
 **Architecture Quality**: Production-ready with:
-- Clean separation of concerns
+- Clean separation of concerns (domain → services → UI)
 - Factory pattern for dependency injection
-- Synchronous API (simpler, more testable)
 - Immutable domain models
 - Comprehensive error handling
+- Textual UI with responsive design
+- Protocol-based service abstraction for testing
 
 ## Source of Truth
 
