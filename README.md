@@ -52,6 +52,14 @@ Enter questions like: *"Welche IT-Dienstleistungen bieten Sie an?"*
 ## Common Commands
 
 ```bash
+# Help
+make help
+
+# Start app
+make up
+make ingest
+make chat
+
 # Run tests
 make test
 
