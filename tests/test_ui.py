@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-from io import StringIO
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -50,10 +48,10 @@ class TestStubChatService:
     def test_satisfies_protocol(self) -> None:
         assert isinstance(StubChatService(), ChatServiceProtocol)
 
-    @pytest.mark.asyncio
-    async def test_ask_returns_chat_response(self) -> None:
+    def test_ask_returns_chat_response(self) -> None:
         service = StubChatService()
-        resp = await service.ask("What is this?")
+        with patch("app.ui.protocol.time.sleep"):
+            resp = service.ask("What is this?")
         assert isinstance(resp, ChatResponse)
         assert resp.is_fallback is True
         assert resp.source_faq is None
@@ -80,10 +78,7 @@ class TestChatServiceAdapter:
 
         assert isinstance(ChatServiceAdapter(CoreService()), ChatServiceProtocol)
 
-    @pytest.mark.asyncio
-    async def test_maps_domain_response_to_ui_response(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_maps_domain_response_to_ui_response(self) -> None:
         class CoreService:
             def handle_question(self, question: str) -> DomainChatResponse:
                 return DomainChatResponse(
@@ -95,12 +90,7 @@ class TestChatServiceAdapter:
                     used_retrieval=True,
                 )
 
-        async def run_inline(func, *args):
-            return func(*args)
-
-        monkeypatch.setattr("app.ui.protocol.asyncio.to_thread", run_inline)
-
-        response = await ChatServiceAdapter(CoreService()).ask("Frage")
+        response = ChatServiceAdapter(CoreService()).ask("Frage")
 
         assert response.answer == "Antwort"
         assert response.source_faq == "faq-01"
@@ -114,147 +104,125 @@ class TestChatServiceAdapter:
 
 class TestRunChatLoop:
     def test_exits_on_eof(self) -> None:
-        """Test that the loop exits cleanly when EOF is reached."""
         service = StubChatService()
 
-        # Mock Console at the point where it's imported
-        with patch("rich.console.Console") as mock_console_class:
-            mock_console = MagicMock()
-            mock_console_class.return_value = mock_console
-            mock_console.input.side_effect = EOFError()
+        with patch("builtins.input", side_effect=EOFError()):
+            with patch("rich.console.Console") as mock_console_class:
+                mock_console = MagicMock()
+                mock_console_class.return_value = mock_console
 
-            from app.ui.chat_app import run_chat_loop
+                from app.ui.chat_app import run_chat_loop
 
-            # Should not raise an error
-            run_chat_loop(service, title="test")
-
-            # Verify the welcome message was printed
-            assert mock_console.print.called
+                run_chat_loop(service, title="test")
+                assert mock_console.print.called
 
     def test_exits_on_keyboard_interrupt(self) -> None:
-        """Test that the loop exits cleanly on Ctrl+C."""
         service = StubChatService()
 
-        # Mock Console at the point where it's imported
-        with patch("rich.console.Console") as mock_console_class:
-            mock_console = MagicMock()
-            mock_console_class.return_value = mock_console
-            mock_console.input.side_effect = KeyboardInterrupt()
+        with patch("builtins.input", side_effect=KeyboardInterrupt()):
+            with patch("rich.console.Console") as mock_console_class:
+                mock_console = MagicMock()
+                mock_console_class.return_value = mock_console
 
-            from app.ui.chat_app import run_chat_loop
+                from app.ui.chat_app import run_chat_loop
 
-            # Should not raise an error
-            run_chat_loop(service, title="test")
+                run_chat_loop(service, title="test")
+                assert mock_console.print.called
 
-            # Verify the goodbye message was printed
-            assert mock_console.print.called
+    def test_exits_on_exit_command(self) -> None:
+        service = MagicMock(spec=ChatServiceProtocol)
+
+        with patch("builtins.input", side_effect=["exit"]):
+            with patch("rich.console.Console") as mock_console_class:
+                mock_console_class.return_value = MagicMock()
+
+                from app.ui.chat_app import run_chat_loop
+
+                run_chat_loop(service, title="test")
+                service.ask.assert_not_called()
 
     def test_skips_empty_questions(self) -> None:
-        """Test that empty questions are skipped without calling the service."""
-        service = AsyncMock(spec=ChatServiceProtocol)
+        service = MagicMock(spec=ChatServiceProtocol)
         service.ask.return_value = ChatResponse(answer="Test")
 
-        with patch("rich.console.Console") as mock_console_class:
-            mock_console = MagicMock()
-            mock_console_class.return_value = mock_console
-            # Return empty string first (empty input), then EOFError to exit
-            mock_console.input.side_effect = ["", EOFError()]
+        with patch("builtins.input", side_effect=["", EOFError()]):
+            with patch("rich.console.Console") as mock_console_class:
+                mock_console_class.return_value = MagicMock()
 
-            from app.ui.chat_app import run_chat_loop
+                from app.ui.chat_app import run_chat_loop
 
-            run_chat_loop(service, title="test")
-
-            # Verify the service was never called for the empty input
-            service.ask.assert_not_called()
+                run_chat_loop(service, title="test")
+                service.ask.assert_not_called()
 
     def test_calls_service_with_valid_question(self) -> None:
-        """Test that valid questions call the service."""
-        service = AsyncMock(spec=ChatServiceProtocol)
+        service = MagicMock(spec=ChatServiceProtocol)
         service.ask.return_value = ChatResponse(answer="Test Answer")
 
-        with patch("rich.console.Console") as mock_console_class:
-            mock_console = MagicMock()
-            mock_console_class.return_value = mock_console
-            # Ask a question, then exit
-            mock_console.input.side_effect = ["Hello Bot?", EOFError()]
+        with patch("builtins.input", side_effect=["Hello Bot?", EOFError()]):
+            with patch("rich.console.Console") as mock_console_class:
+                mock_console_class.return_value = MagicMock()
 
-            from app.ui.chat_app import run_chat_loop
+                from app.ui.chat_app import run_chat_loop
 
-            run_chat_loop(service, title="test")
-
-            # Verify the service was called with the question
-            service.ask.assert_called_once_with("Hello Bot?")
+                run_chat_loop(service, title="test")
+                service.ask.assert_called_once_with("Hello Bot?")
 
     def test_prints_answer_on_success(self) -> None:
-        """Test that successful answers are printed."""
-        service = AsyncMock(spec=ChatServiceProtocol)
+        service = MagicMock(spec=ChatServiceProtocol)
         service.ask.return_value = ChatResponse(answer="Test Answer")
 
-        with patch("rich.console.Console") as mock_console_class:
-            mock_console = MagicMock()
-            mock_console_class.return_value = mock_console
-            mock_console.input.side_effect = ["What?", EOFError()]
+        with patch("builtins.input", side_effect=["What?", EOFError()]):
+            with patch("rich.console.Console") as mock_console_class:
+                mock_console = MagicMock()
+                mock_console_class.return_value = mock_console
 
-            from app.ui.chat_app import run_chat_loop
+                from app.ui.chat_app import run_chat_loop
 
-            run_chat_loop(service, title="test")
+                run_chat_loop(service, title="test")
 
-            # Verify the answer was printed
-            calls = [str(call) for call in mock_console.print.call_args_list]
-            answer_printed = any("Test Answer" in str(call) for call in calls)
-            assert answer_printed
+                calls = [str(c) for c in mock_console.print.call_args_list]
+                assert any("Test Answer" in c for c in calls)
 
     def test_prints_error_on_service_exception(self) -> None:
-        """Test that service exceptions are caught and printed."""
-        service = AsyncMock(spec=ChatServiceProtocol)
+        service = MagicMock(spec=ChatServiceProtocol)
         service.ask.side_effect = RuntimeError("Service error")
 
-        with patch("rich.console.Console") as mock_console_class:
-            mock_console = MagicMock()
-            mock_console_class.return_value = mock_console
-            mock_console.input.side_effect = ["Help!", EOFError()]
+        with patch("builtins.input", side_effect=["Help!", EOFError()]):
+            with patch("rich.console.Console") as mock_console_class:
+                mock_console = MagicMock()
+                mock_console_class.return_value = mock_console
 
-            from app.ui.chat_app import run_chat_loop
+                from app.ui.chat_app import run_chat_loop
 
-            run_chat_loop(service, title="test")
+                run_chat_loop(service, title="test")
 
-            # Verify the error was printed
-            calls = [str(call) for call in mock_console.print.call_args_list]
-            error_printed = any("Service error" in str(call) for call in calls)
-            assert error_printed
+                calls = [str(c) for c in mock_console.print.call_args_list]
+                assert any("Service error" in c for c in calls)
 
     def test_custom_title(self) -> None:
-        """Test that custom title is used."""
-        service = StubChatService()
+        service = MagicMock(spec=ChatServiceProtocol)
 
-        with patch("rich.console.Console") as mock_console_class:
-            mock_console = MagicMock()
-            mock_console_class.return_value = mock_console
-            mock_console.input.side_effect = EOFError()
+        with patch("builtins.input", side_effect=EOFError()):
+            with patch("rich.console.Console") as mock_console_class:
+                mock_console = MagicMock()
+                mock_console_class.return_value = mock_console
 
-            from app.ui.chat_app import run_chat_loop
+                from app.ui.chat_app import run_chat_loop
 
-            run_chat_loop(service, title="MyCustomBot")
+                run_chat_loop(service, title="MyCustomBot")
 
-            # Verify title was in the print calls
-            calls = [str(call) for call in mock_console.print.call_args_list]
-            title_printed = any("MyCustomBot" in str(call) for call in calls)
-            assert title_printed
+                calls = [str(c) for c in mock_console.print.call_args_list]
+                assert any("MyCustomBot" in c for c in calls)
 
     def test_strips_whitespace_from_input(self) -> None:
-        """Test that whitespace is stripped from user input."""
-        service = AsyncMock(spec=ChatServiceProtocol)
+        service = MagicMock(spec=ChatServiceProtocol)
         service.ask.return_value = ChatResponse(answer="OK")
 
-        with patch("rich.console.Console") as mock_console_class:
-            mock_console = MagicMock()
-            mock_console_class.return_value = mock_console
-            # Question with leading/trailing whitespace
-            mock_console.input.side_effect = ["  question with spaces  ", EOFError()]
+        with patch("builtins.input", side_effect=["  spaced question  ", EOFError()]):
+            with patch("rich.console.Console") as mock_console_class:
+                mock_console_class.return_value = MagicMock()
 
-            from app.ui.chat_app import run_chat_loop
+                from app.ui.chat_app import run_chat_loop
 
-            run_chat_loop(service, title="test")
-
-            # Verify the service was called with stripped input
-            service.ask.assert_called_once_with("question with spaces")
+                run_chat_loop(service, title="test")
+                service.ask.assert_called_once_with("spaced question")

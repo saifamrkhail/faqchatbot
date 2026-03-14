@@ -1,8 +1,7 @@
-"""Simple rich-based terminal chat loop."""
+"""Simple terminal chat loop."""
 
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -10,7 +9,7 @@ if TYPE_CHECKING:
 
 
 def run_chat_loop(chat_service: ChatServiceProtocol, *, title: str = "faqchatbot") -> None:
-    """Run an interactive chat loop using rich for output.
+    """Run an interactive terminal chat loop.
 
     Args:
         chat_service: The chat service implementation to use.
@@ -20,15 +19,14 @@ def run_chat_loop(chat_service: ChatServiceProtocol, *, title: str = "faqchatbot
     from rich.rule import Rule
 
     console = Console()
-
-    console.print(Rule(f"[bold]{title}[/bold]  —  Ctrl+C to exit"))
+    console.print(Rule(f"[bold]{title}[/bold]  —  Ctrl+C oder 'exit' zum Beenden"))
     console.print()
-    console.print("  [dim]Willkommen! Stelle eine Frage zu unseren FAQ.[/dim]")
+    console.print("[dim]Willkommen! Stelle eine Frage zu unseren FAQ.[/dim]")
     console.print()
 
     while True:
         try:
-            question = console.input("[bold cyan] Sie:[/bold cyan] ").strip()
+            question = input("Sie: ").strip()
         except (EOFError, KeyboardInterrupt):
             console.print("\n[dim]Tschüss![/dim]")
             break
@@ -36,12 +34,16 @@ def run_chat_loop(chat_service: ChatServiceProtocol, *, title: str = "faqchatbot
         if not question:
             continue
 
-        console.print("[dim] Einen Moment bitte…[/dim]")
+        if question.lower() in {"exit", "quit", "bye"}:
+            console.print("[dim]Tschüss![/dim]")
+            break
+
+        console.print("[dim]...[/dim]")
 
         try:
-            response = asyncio.run(chat_service.ask(question))
-            console.print(f"[bold green] Bot:[/bold green] {response.answer}")
+            response = chat_service.ask(question)
+            console.print(f"[bold green]Bot:[/bold green] {response.answer}")
         except Exception as exc:  # noqa: BLE001
-            console.print(f"[bold red] Fehler:[/bold red] {exc}")
+            console.print(f"[bold red]Fehler:[/bold red] {exc}")
 
         console.print()

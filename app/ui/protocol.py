@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
+import time
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
@@ -21,43 +21,33 @@ class ChatResponse:
 
 @runtime_checkable
 class ChatServiceProtocol(Protocol):
-    """Contract that the UI expects from any chat backend.
+    """Contract that the UI expects from any chat backend."""
 
-    The UI stays decoupled from the concrete chat pipeline by relying on a
-    small async protocol.
-    """
-
-    async def ask(self, question: str) -> ChatResponse: ...
+    def ask(self, question: str) -> ChatResponse: ...
 
 
 @dataclass(slots=True)
 class ChatServiceAdapter:
-    """Async adapter for the synchronous core ChatService."""
+    """Adapter wrapping the synchronous core ChatService."""
 
     chat_service: ChatService
 
-    async def ask(self, question: str) -> ChatResponse:
-        response = await asyncio.to_thread(self.chat_service.handle_question, question)
+    def ask(self, question: str) -> ChatResponse:
+        response = self.chat_service.handle_question(question)
         return _to_ui_response(response)
 
 
 class StubChatService:
-    """Canned chat service for standalone UI testing and development.
-
-    Returns a fixed German-language stub response after a short simulated
-    delay so the loading indicator can be exercised.
-    """
+    """Canned chat service for standalone UI testing and development."""
 
     _STUB_ANSWER = (
         "Dies ist eine Platzhalter-Antwort. "
-        "Der vollständige Chat-Service (Modul 07) ist noch nicht angebunden."
+        "Der vollständige Chat-Service ist noch nicht angebunden."
     )
     _SIMULATED_DELAY_SECONDS = 0.8
 
-    async def ask(self, question: str) -> ChatResponse:
-        """Return a stub response after a brief simulated delay."""
-
-        await asyncio.sleep(self._SIMULATED_DELAY_SECONDS)
+    def ask(self, question: str) -> ChatResponse:
+        time.sleep(self._SIMULATED_DELAY_SECONDS)
         return ChatResponse(
             answer=self._STUB_ANSWER,
             source_faq=None,
