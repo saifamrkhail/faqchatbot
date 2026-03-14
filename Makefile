@@ -93,7 +93,7 @@ ingest:
 
 chat:
 	@echo "$(CYAN)Starting chatbot...$(NC)"
-	docker compose up app
+	docker compose run --rm app
 
 chat-bg:
 	@echo "$(CYAN)Starting chatbot in background...$(NC)"

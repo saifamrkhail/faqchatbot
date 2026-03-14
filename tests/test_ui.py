@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -103,126 +103,83 @@ class TestChatServiceAdapter:
 
 
 class TestRunChatLoop:
+    def _make_service(self, answer: str = "Antwort") -> MagicMock:
+        service = MagicMock(spec=ChatServiceProtocol)
+        service.ask.return_value = ChatResponse(answer=answer)
+        return service
+
     def test_exits_on_eof(self) -> None:
-        service = StubChatService()
-
-        with patch("builtins.input", side_effect=EOFError()):
-            with patch("rich.console.Console") as mock_console_class:
-                mock_console = MagicMock()
-                mock_console_class.return_value = mock_console
-
-                from app.ui.chat_app import run_chat_loop
-
-                run_chat_loop(service, title="test")
-                assert mock_console.print.called
+        service = self._make_service()
+        with patch("builtins.input", side_effect=EOFError()), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        assert mock_print.called
 
     def test_exits_on_keyboard_interrupt(self) -> None:
-        service = StubChatService()
-
-        with patch("builtins.input", side_effect=KeyboardInterrupt()):
-            with patch("rich.console.Console") as mock_console_class:
-                mock_console = MagicMock()
-                mock_console_class.return_value = mock_console
-
-                from app.ui.chat_app import run_chat_loop
-
-                run_chat_loop(service, title="test")
-                assert mock_console.print.called
+        service = self._make_service()
+        with patch("builtins.input", side_effect=KeyboardInterrupt()), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        assert mock_print.called
 
     def test_exits_on_exit_command(self) -> None:
-        service = MagicMock(spec=ChatServiceProtocol)
-
-        with patch("builtins.input", side_effect=["exit"]):
-            with patch("rich.console.Console") as mock_console_class:
-                mock_console_class.return_value = MagicMock()
-
-                from app.ui.chat_app import run_chat_loop
-
-                run_chat_loop(service, title="test")
-                service.ask.assert_not_called()
+        service = self._make_service()
+        with patch("builtins.input", side_effect=["exit"]), \
+             patch("builtins.print"):
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        service.ask.assert_not_called()
 
     def test_skips_empty_questions(self) -> None:
-        service = MagicMock(spec=ChatServiceProtocol)
-        service.ask.return_value = ChatResponse(answer="Test")
-
-        with patch("builtins.input", side_effect=["", EOFError()]):
-            with patch("rich.console.Console") as mock_console_class:
-                mock_console_class.return_value = MagicMock()
-
-                from app.ui.chat_app import run_chat_loop
-
-                run_chat_loop(service, title="test")
-                service.ask.assert_not_called()
+        service = self._make_service()
+        with patch("builtins.input", side_effect=["", "  ", EOFError()]), \
+             patch("builtins.print"):
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        service.ask.assert_not_called()
 
     def test_calls_service_with_valid_question(self) -> None:
-        service = MagicMock(spec=ChatServiceProtocol)
-        service.ask.return_value = ChatResponse(answer="Test Answer")
+        service = self._make_service()
+        with patch("builtins.input", side_effect=["Was kostet Support?", EOFError()]), \
+             patch("builtins.print"):
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        service.ask.assert_called_once_with("Was kostet Support?")
 
-        with patch("builtins.input", side_effect=["Hello Bot?", EOFError()]):
-            with patch("rich.console.Console") as mock_console_class:
-                mock_console_class.return_value = MagicMock()
-
-                from app.ui.chat_app import run_chat_loop
-
-                run_chat_loop(service, title="test")
-                service.ask.assert_called_once_with("Hello Bot?")
-
-    def test_prints_answer_on_success(self) -> None:
-        service = MagicMock(spec=ChatServiceProtocol)
-        service.ask.return_value = ChatResponse(answer="Test Answer")
-
-        with patch("builtins.input", side_effect=["What?", EOFError()]):
-            with patch("rich.console.Console") as mock_console_class:
-                mock_console = MagicMock()
-                mock_console_class.return_value = mock_console
-
-                from app.ui.chat_app import run_chat_loop
-
-                run_chat_loop(service, title="test")
-
-                calls = [str(c) for c in mock_console.print.call_args_list]
-                assert any("Test Answer" in c for c in calls)
+    def test_prints_answer(self) -> None:
+        service = self._make_service(answer="Ja, wir bieten Support an.")
+        with patch("builtins.input", side_effect=["Frage?", EOFError()]), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        printed = " ".join(str(c) for c in mock_print.call_args_list)
+        assert "Ja, wir bieten Support an." in printed
 
     def test_prints_error_on_service_exception(self) -> None:
         service = MagicMock(spec=ChatServiceProtocol)
-        service.ask.side_effect = RuntimeError("Service error")
+        service.ask.side_effect = RuntimeError("Verbindung fehlgeschlagen")
+        with patch("builtins.input", side_effect=["Hilfe!", EOFError()]), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        printed = " ".join(str(c) for c in mock_print.call_args_list)
+        assert "Verbindung fehlgeschlagen" in printed
 
-        with patch("builtins.input", side_effect=["Help!", EOFError()]):
-            with patch("rich.console.Console") as mock_console_class:
-                mock_console = MagicMock()
-                mock_console_class.return_value = mock_console
-
-                from app.ui.chat_app import run_chat_loop
-
-                run_chat_loop(service, title="test")
-
-                calls = [str(c) for c in mock_console.print.call_args_list]
-                assert any("Service error" in c for c in calls)
-
-    def test_custom_title(self) -> None:
-        service = MagicMock(spec=ChatServiceProtocol)
-
-        with patch("builtins.input", side_effect=EOFError()):
-            with patch("rich.console.Console") as mock_console_class:
-                mock_console = MagicMock()
-                mock_console_class.return_value = mock_console
-
-                from app.ui.chat_app import run_chat_loop
-
-                run_chat_loop(service, title="MyCustomBot")
-
-                calls = [str(c) for c in mock_console.print.call_args_list]
-                assert any("MyCustomBot" in c for c in calls)
+    def test_title_in_header(self) -> None:
+        service = self._make_service()
+        with patch("builtins.input", side_effect=EOFError()), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="MeinBot")
+        printed = " ".join(str(c) for c in mock_print.call_args_list)
+        assert "MeinBot" in printed
 
     def test_strips_whitespace_from_input(self) -> None:
-        service = MagicMock(spec=ChatServiceProtocol)
-        service.ask.return_value = ChatResponse(answer="OK")
-
-        with patch("builtins.input", side_effect=["  spaced question  ", EOFError()]):
-            with patch("rich.console.Console") as mock_console_class:
-                mock_console_class.return_value = MagicMock()
-
-                from app.ui.chat_app import run_chat_loop
-
-                run_chat_loop(service, title="test")
-                service.ask.assert_called_once_with("spaced question")
+        service = self._make_service()
+        with patch("builtins.input", side_effect=["  Frage mit Spaces  ", EOFError()]), \
+             patch("builtins.print"):
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        service.ask.assert_called_once_with("Frage mit Spaces")
