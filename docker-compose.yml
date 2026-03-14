@@ -1,0 +1,49 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.13.2
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
+      FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333
+      FAQ_CHATBOT_OLLAMA_BASE_URL: http://host.docker.internal:11434
+      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3:8b
+      FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text
+      FAQ_CHATBOT_TOP_K: "3"
+      FAQ_CHATBOT_SCORE_THRESHOLD: "0.70"
+      FAQ_CHATBOT_FALLBACK_MESSAGE: Leider konnte ich Ihre Frage nicht verstehen.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - qdrant
+    stdin_open: true
+    tty: true
+    command: ["faqchatbot", "--tui"]
+
+  ingest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
+      FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333
+      FAQ_CHATBOT_OLLAMA_BASE_URL: http://host.docker.internal:11434
+      FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text
+      FAQ_CHATBOT_QDRANT_COLLECTION_NAME: faq_entries
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - qdrant
+    command: ["python", "-m", "scripts.ingest"]
+    profiles:
+      - tooling
+
+volumes:
+  qdrant_data:
