@@ -85,8 +85,6 @@ services:
       qdrant:
         condition: service_healthy
     command: ["python", "-m", "scripts.ingest"]
-    profiles:
-      - tooling
 
 volumes:
   ollama_data:

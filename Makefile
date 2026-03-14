@@ -89,7 +89,7 @@ pull-models:
 
 ingest:
 	@echo "$(CYAN)Ingesting FAQ data...$(NC)"
-	docker compose run --rm ingest
+	docker compose run --rm --build ingest
 
 chat:
 	@echo "$(CYAN)Starting chatbot...$(NC)"
