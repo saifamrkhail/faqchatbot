@@ -11,7 +11,17 @@ NC := \033[0m # No Color
 
 # Help target
 help:
-	@echo "$(CYAN)FAQ Chatbot - Available Commands$(NC)"
+	@echo "$(CYAN)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(CYAN)  FAQ Chatbot - Quick Start$(NC)"
+	@echo "$(CYAN)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Terminal 1:$(NC)"
+	@echo "  $$ make up              # Start Ollama, Qdrant, App"
+	@echo ""
+	@echo "$(YELLOW)Terminal 2:$(NC)"
+	@echo "  $$ make pull-models     # Download AI models (~3 min)"
+	@echo "  $$ make ingest          # Load FAQ data"
+	@echo "  $$ make chat            # Start chatting!"
 	@echo ""
 	@echo "$(GREEN)Docker Commands:$(NC)"
 	@echo "  make up              - Start all services (Ollama, Qdrant, App)"

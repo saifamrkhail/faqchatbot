@@ -16,103 +16,126 @@ The bot answers questions **only from FAQ context** and returns a deterministic 
 
 ---
 
-## Setup & Run (Docker) 🐳
+## Start the Chatbot — Complete Guide 🚀
 
-### 1. Start Services
+### **Step 0: Prerequisites**
+
+Make sure you have:
+- **Docker & Docker Compose** (v2.0+)
+- ~5 GB free disk space
+- Internet connection (first run only)
+
+### **Step 1: Clone & Navigate**
+
+```bash
+git clone <your-repo-url>
+cd faqchatbot-claude
+```
+
+### **Step 2: Start Core Services**
+
+**Open Terminal 1:**
+
 ```bash
 make up
 ```
 
-This starts Ollama, Qdrant, and the app (~30 seconds).
+**What happens:**
+- Starts **Ollama** (embeddings & generation engine) on `http://localhost:11434`
+- Starts **Qdrant** (vector database) on `http://localhost:6333`
+- Starts the app container (ready to run commands)
 
-### 2. Pull Ollama Models (in another terminal)
-Models must be pulled **inside** the Ollama container:
+**Wait 30 seconds** for services to be healthy. You'll see:
+```
+✓ Container faqchatbot-claude-ollama-1        Healthy
+✓ Container faqchatbot-claude-qdrant-1        Healthy
+✓ Container faqchatbot-claude-app-1           Running
+```
+
+### **Step 3: Pull AI Models**
+
+**Open Terminal 2** (while Terminal 1 keeps services running):
 
 ```bash
 make pull-models
 ```
 
-This pulls into the container:
-- `nomic-embed-text-v2-moe` (embedding)
-- `qwen3.5:2b` (generation)
+**What happens:**
+- Downloads `nomic-embed-text-v2-moe` (embedding model)
+- Downloads `qwen3.5:2b` (generation model)
+- Stores them inside the Ollama container
 
-Verify with:
+⏱️ **This takes 2–5 minutes on first run** (~2 GB download)
+
+**Verify models installed:**
 ```bash
 make models
 ```
 
-### 3. Ingest FAQ Data
+You should see both models listed.
+
+### **Step 4: Ingest FAQ Data**
+
 ```bash
 make ingest
 ```
 
-Expected output:
+**What happens:**
+- Loads 10 sample German FAQ entries from `data/faq.json`
+- Generates embeddings for each entry (semantic search vectors)
+- Stores them in Qdrant (ready to be searched)
+
+**Expected output:**
 ```
 ✓ Loaded 10 FAQ entries
 ✓ Generated 10 embeddings
 ✓ Stored vectors in Qdrant
+Ingestion complete: 10 entries, 0 errors
 ```
 
-### 4. Start the Chat
+### **Step 5: Start the Chatbot**
+
 ```bash
 make chat
 ```
 
-Enter questions like:
-- *"Welche IT-Dienstleistungen bieten Sie an?"*
-- *"Wie kann ich Support kontaktieren?"*
+**What happens:**
+- Opens an interactive terminal chat loop
+- You can now ask questions in German
 
-Press **Ctrl+C** to exit.
-
-### Useful Commands
-```bash
-make logs          # View app logs
-make logs-ollama   # View Ollama logs
-make logs-qdrant   # View Qdrant logs
-make ps            # Show container status
-make down          # Stop all services
-make health        # Check service health
+**Example interaction:**
 ```
+────────────────────────────────────────────────────────────
+  faqchatbot  |  'exit' oder Ctrl+C zum Beenden
+────────────────────────────────────────────────────────────
+Willkommen! Stelle eine Frage zu unseren FAQ.
+
+Sie: Welche IT-Dienstleistungen bieten Sie an?
+...
+Bot: Wir bieten eine breite Palette von IT-Dienstleistungen an,
+     darunter Netzwerkmanagement, IT-Support, Cloud-Lösungen...
+
+Sie: exit
+Tschüss!
+```
+
+**Exit with:** `exit` or `Ctrl+C`
 
 ---
 
-## Setup & Run (Local Development) 💻
+## Quick Reference
 
-For local development against Docker services:
-
-### 1. Install Dependencies
-```bash
-cd faqchatbot-claude
-uv sync
-```
-
-### 2. Start Services (Docker)
-```bash
-docker compose up -d ollama qdrant
-```
-
-### 3. Pull Models into Ollama Container
-```bash
-docker compose exec ollama ollama pull nomic-embed-text-v2-moe
-docker compose exec ollama ollama pull qwen3.5:2b
-```
-
-### 4. Ingest FAQ Data Locally
-```bash
-make ingest-local
-```
-
-### 5. Run Tests
-```bash
-make test
-```
-
-Result: **147 passed, 0 skipped** ✓
-
-### 6. Start the Chat Locally
-```bash
-make run-local
-```
+| Command | Purpose |
+|---------|---------|
+| `make up` | Start Ollama, Qdrant, App |
+| `make pull-models` | Download AI models (~2-5 min) |
+| `make ingest` | Load FAQ data into Qdrant |
+| `make chat` | Run interactive chatbot |
+| `make test` | Run 149 tests |
+| `make logs` | View app logs |
+| `make ps` | Show container status |
+| `make down` | Stop all services |
+| `make clean` | Stop & delete all data |
 
 ---
 
@@ -120,27 +143,71 @@ make run-local
 
 | Problem | Solution |
 |---------|----------|
-| **Model not found (404)** | Pull into container: `make pull-models` |
-| **Qdrant connection refused** | Start services: `make up` |
-| **Ingest fails with timeout** | Check logs: `make logs-ollama` |
-| **Check available models** | `make models` |
-| **Tests fail locally** | Reset deps: `uv sync --force` |
-| **Need shell in Ollama container** | `make shell-ollama` |
+| **Models not found (404)** | Run `make pull-models` in Terminal 2 |
+| **Chatbot won't take input** | Make sure you're in Terminal 2, not logged into container |
+| **"Port 6333 already in use"** | Run `make clean && make up` |
+| **Qdrant connection refused** | Wait longer for services (check `make logs-qdrant`) |
+| **Tests fail** | Run `uv sync --force` |
+| **Image out of date** | Run `docker compose build app` |
 
 ---
 
-## What's Inside
+## Local Development 💻
+
+To run the chatbot **locally** (not in Docker):
+
+```bash
+# 1. Install dependencies
+uv sync
+
+# 2. Start just Ollama & Qdrant in Docker
+docker compose up -d ollama qdrant
+
+# 3. Pull models (same as Step 3 above)
+make pull-models
+
+# 4. Ingest data
+make ingest-local
+
+# 5. Run tests
+make test
+
+# 6. Start chatbot locally
+make run-local
+```
+
+---
+
+## From-Scratch Example (Copy & Paste)
+
+```bash
+# Terminal 1
+git clone <repo>
+cd faqchatbot-claude
+make up
+
+# Terminal 2 (while Terminal 1 runs)
+make pull-models      # Wait ~3 minutes for downloads
+make ingest          # ~30 seconds
+make chat            # Start chatting!
+```
+
+---
+
+## Architecture
 
 | Component | Purpose |
 |-----------|---------|
 | **Ingestion** | Load FAQ → Generate embeddings → Store in Qdrant |
 | **Retrieval** | Embed user question → Semantic search → Score threshold |
 | **Generation** | Grounded answer from FAQ context or fallback |
-| **UI** | Terminal chat loop with Rich formatting |
+| **UI** | Terminal chat loop (plain input/output, no external dependencies) |
 
 **Models:**
-- Generation: `qwen3.5:2b`
-- Embedding: `nomic-embed-text-v2-moe`
+- **Generation:** `qwen3.5:2b` (LLM for answer generation)
+- **Embedding:** `nomic-embed-text-v2-moe` (for semantic search)
+- **Vector Store:** Qdrant (distributed vector database)
+- **Ingestion:** `faqchatbot` (loads and embeds FAQ data)
 
 ---
 
@@ -184,7 +251,7 @@ app/
   ├── repositories/      # FAQ JSON loading
   ├── services/          # Business logic (Ingestion, Retrieval, Generation, Chat)
   ├── infrastructure/    # Ollama & Qdrant clients
-  └── ui/                # Textual TUI
+  └── ui/                # Terminal chat interface
 
 scripts/
   └── ingest.py          # Standalone ingestion script
@@ -192,7 +259,7 @@ scripts/
 data/
   └── faq.json           # Sample FAQ (10 German entries)
 
-tests/                   # 147 tests (all passing ✓)
+tests/                   # 149 tests (all passing ✓)
 docs/                    # Detailed documentation
 ```
 
@@ -219,7 +286,7 @@ pytest tests/test_ui*.py             # Phase 8
 
 ## Architecture Rules
 
-1. **UI is thin** — no business logic in TUI
+1. **UI is thin** — plain terminal interface, no external dependencies
 2. **Ingestion is separate** — not part of chat startup
 3. **Retrieval before generation** — threshold decides match
 4. **Same embedding model** — for both ingestion and queries
@@ -279,10 +346,10 @@ See `.env.example` for defaults.
 - Retrieval Engine
 - Answer Generation
 - Chat Application Service
-- Terminal UI (Rich-based chat loop)
+- Terminal UI (plain terminal interface)
 
-147 tests passing. Production-ready.
+149 tests passing. Production-ready.
 
 ---
 
-**Next**: `docker compose up --build app` 🚀
+**Get started**: See [Quick Start](#start-the-chatbot--complete-guide-) above 🚀
