@@ -117,9 +117,9 @@ The system is local-first. Configuration must allow:
 
 Recommended baseline:
 
-- application and Qdrant are Docker-ready
-- Ollama is treated as an external local dependency by default
-- full Ollama containerization stays optional because it increases runtime complexity
+- application, Ollama, and Qdrant are Docker-ready
+- local Ollama access via URL remains possible for non-Docker workflows
+- the default Docker workflow is fully containerized for reproducible local deployment
 
 ## Runtime Flow
 

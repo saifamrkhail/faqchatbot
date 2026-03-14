@@ -36,13 +36,14 @@ Provide a reproducible local runtime and Docker-based demo setup with clear conf
 
 1. Create a production-ready `Dockerfile` based on Python 3.11 and `uv`.
 2. Add `docker-compose.yml` with:
+   - Ollama service
    - Qdrant service
    - app service (TUI)
    - one-off ingest service profile
 3. Define clear environment wiring for container runtime:
    - FAQ data path
    - Qdrant service URL
-   - external Ollama URL
+   - Ollama service URL
 4. Add `.dockerignore` for smaller builds and cleaner contexts.
 5. Write runtime instructions for local and Docker workflows.
 

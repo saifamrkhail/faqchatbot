@@ -45,6 +45,8 @@ docker compose --version
 ```bash
 # Bauen Sie das App-Image und starten Sie alle Services
 docker compose up --build
+# oder
+docker compose up --build app
 
 # Oder im Hintergrund:
 docker compose up -d
@@ -198,6 +200,8 @@ UV_CACHE_DIR=.uv-cache uv run --no-sync pytest
 .venv/bin/python -m pytest
 ```
 
+Im Compose-Stack sind Ollama `0.18.0`, ein einmaliger Modell-Bootstrap und Qdrant `1.17.1` bereits enthalten.
+Die TUI nutzt standardmäßig den echten Chat-Service; nur mit `FAQ_CHATBOT_USE_STUB_UI_SERVICE=true` fällt sie auf den Stub zurück.
 ### Test-Statistik
 
 ```
