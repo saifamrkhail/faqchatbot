@@ -24,7 +24,8 @@ help:
 	@echo "  $$ make chat            # Start chatting!"
 	@echo ""
 	@echo "$(GREEN)Docker Commands:$(NC)"
-	@echo "  make up              - Start all services (Ollama, Qdrant, App)"
+	@echo "  make up              - Start services (Ollama, Qdrant) in background"
+	@echo "  make up-all          - Start services + app logs (logs only, no input)"
 	@echo "  make pull-models     - Pull Ollama models into container"
 	@echo "  make down            - Stop all services"
 	@echo "  make logs            - View app logs (live)"
@@ -59,7 +60,12 @@ build:
 	docker compose build
 
 up:
-	@echo "$(CYAN)Starting all services...$(NC)"
+	@echo "$(CYAN)Starting services (Ollama, Qdrant)...$(NC)"
+	@echo "$(YELLOW)Run 'make pull-models' in another terminal$(NC)"
+	docker compose up -d ollama qdrant
+
+up-all:
+	@echo "$(CYAN)Starting all services (Ollama, Qdrant, App logs)...$(NC)"
 	docker compose up --build app
 
 up-bg:

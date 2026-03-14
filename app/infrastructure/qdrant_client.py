@@ -182,9 +182,7 @@ class QdrantClient:
                 },
             )
 
-        raw_results = response.get("result")
-        if not isinstance(raw_results, list):
-            raise QdrantClientError("Qdrant returned an invalid search response")
+        raw_results = _extract_search_results(response)
 
         results: list[QdrantSearchResult] = []
         for raw_result in raw_results:
@@ -279,6 +277,19 @@ def _extract_vector_config(collection_info: Mapping[str, Any]) -> QdrantCollecti
     if not isinstance(distance, str) or not distance.strip():
         raise QdrantClientError("Qdrant collection response is missing vector distance")
     return QdrantCollectionConfig(vector_size=size, distance=distance.strip())
+
+
+def _extract_search_results(response: Mapping[str, Any]) -> list[Any]:
+    result = response.get("result")
+    if isinstance(result, list):
+        return result
+
+    if isinstance(result, Mapping):
+        points = result.get("points")
+        if isinstance(points, list):
+            return points
+
+    raise QdrantClientError("Qdrant returned an invalid search response")
 
 
 def _format_http_error(service_name: str, response: httpx.Response) -> str:

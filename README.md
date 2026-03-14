@@ -43,14 +43,9 @@ make up
 **What happens:**
 - Starts **Ollama** (embeddings & generation engine) on `http://localhost:11434`
 - Starts **Qdrant** (vector database) on `http://localhost:6333`
-- Starts the app container (ready to run commands)
+- Runs in **background** (-d flag) so you can use Terminal 2
 
-**Wait 30 seconds** for services to be healthy. You'll see:
-```
-✓ Container faqchatbot-claude-ollama-1        Healthy
-✓ Container faqchatbot-claude-qdrant-1        Healthy
-✓ Container faqchatbot-claude-app-1           Running
-```
+**Wait 10-15 seconds** for services to be ready. You'll see confirmation messages.
 
 ### **Step 3: Pull AI Models**
 
