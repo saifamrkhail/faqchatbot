@@ -1,8 +1,10 @@
-"""Tests for Phase 8 – Terminal UI (Module 08)."""
+"""Tests for Terminal UI (Module 08)."""
 
 from __future__ import annotations
 
 import asyncio
+from io import StringIO
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -14,15 +16,11 @@ from app.ui.protocol import (
     StubChatService,
 )
 
-try:
-    import textual  # noqa: F401
-except ModuleNotFoundError:
-    textual = None
-
 
 # ---------------------------------------------------------------------------
 # ChatResponse tests
 # ---------------------------------------------------------------------------
+
 
 class TestChatResponse:
     def test_construct_with_defaults(self) -> None:
@@ -47,6 +45,7 @@ class TestChatResponse:
 # StubChatService tests
 # ---------------------------------------------------------------------------
 
+
 class TestStubChatService:
     def test_satisfies_protocol(self) -> None:
         assert isinstance(StubChatService(), ChatServiceProtocol)
@@ -59,6 +58,11 @@ class TestStubChatService:
         assert resp.is_fallback is True
         assert resp.source_faq is None
         assert len(resp.answer) > 0
+
+
+# ---------------------------------------------------------------------------
+# ChatServiceAdapter tests
+# ---------------------------------------------------------------------------
 
 
 class TestChatServiceAdapter:
@@ -104,119 +108,153 @@ class TestChatServiceAdapter:
 
 
 # ---------------------------------------------------------------------------
-# Widget unit tests (no full app mount required)
+# Chat loop tests
 # ---------------------------------------------------------------------------
 
-@pytest.mark.skipif(textual is None, reason="textual is not installed")
-class TestWidgetImports:
-    """Verify all widgets can be imported without errors."""
 
-    def test_import_message_bubble(self) -> None:
-        from app.ui.widgets import MessageBubble
-        assert MessageBubble is not None
+class TestRunChatLoop:
+    def test_exits_on_eof(self) -> None:
+        """Test that the loop exits cleanly when EOF is reached."""
+        service = StubChatService()
 
-    def test_import_chat_log(self) -> None:
-        from app.ui.widgets import ChatLog
-        assert ChatLog is not None
+        # Mock Console at the point where it's imported
+        with patch("rich.console.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+            mock_console.input.side_effect = EOFError()
 
-    def test_import_status_indicator(self) -> None:
-        from app.ui.widgets import StatusIndicator
-        assert StatusIndicator is not None
+            from app.ui.chat_app import run_chat_loop
 
-    def test_import_chat_input(self) -> None:
-        from app.ui.widgets import ChatInput
-        assert ChatInput is not None
+            # Should not raise an error
+            run_chat_loop(service, title="test")
 
+            # Verify the welcome message was printed
+            assert mock_console.print.called
 
-# ---------------------------------------------------------------------------
-# FAQChatApp integration tests (Textual pilot)
-# ---------------------------------------------------------------------------
+    def test_exits_on_keyboard_interrupt(self) -> None:
+        """Test that the loop exits cleanly on Ctrl+C."""
+        service = StubChatService()
 
-@pytest.mark.skipif(textual is None, reason="textual is not installed")
-class TestFAQChatApp:
-    @pytest.mark.asyncio
-    async def test_app_mounts_and_has_expected_widgets(self) -> None:
-        from app.ui.chat_app import FAQChatApp
-        from app.ui.widgets import ChatInput, ChatLog, StatusIndicator
+        # Mock Console at the point where it's imported
+        with patch("rich.console.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+            mock_console.input.side_effect = KeyboardInterrupt()
 
-        app = FAQChatApp()
-        async with app.run_test() as pilot:
-            assert app.query_one("#chat-log", ChatLog)
-            assert app.query_one("#status-indicator", StatusIndicator)
-            assert app.query_one("#input-area", ChatInput)
+            from app.ui.chat_app import run_chat_loop
 
-    @pytest.mark.asyncio
-    async def test_welcome_message_displayed(self) -> None:
-        from app.ui.chat_app import FAQChatApp
+            # Should not raise an error
+            run_chat_loop(service, title="test")
 
-        app = FAQChatApp()
-        async with app.run_test() as pilot:
-            welcome = app.query_one("#welcome")
-            assert "Willkommen" in welcome.render().plain
+            # Verify the goodbye message was printed
+            assert mock_console.print.called
 
-    @pytest.mark.asyncio
-    async def test_submit_question_shows_response(self) -> None:
-        from app.ui.chat_app import FAQChatApp
-        from app.ui.widgets import ChatLog
+    def test_skips_empty_questions(self) -> None:
+        """Test that empty questions are skipped without calling the service."""
+        service = AsyncMock(spec=ChatServiceProtocol)
+        service.ask.return_value = ChatResponse(answer="Test")
 
-        # Use a fast stub that returns immediately.
-        class FastStub:
-            async def ask(self, question: str) -> ChatResponse:
-                return ChatResponse(answer="Test-Antwort", is_fallback=False)
+        with patch("rich.console.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+            # Return empty string first (empty input), then EOFError to exit
+            mock_console.input.side_effect = ["", EOFError()]
 
-        app = FAQChatApp(chat_service=FastStub())
-        async with app.run_test() as pilot:
-            # Type a question and submit.
-            await pilot.click("#chat-input")
-            await pilot.press("T", "e", "s", "t")
-            await pilot.press("enter")
-            await pilot.pause()
+            from app.ui.chat_app import run_chat_loop
 
-            chat_log = app.query_one("#chat-log", ChatLog)
-            rendered = chat_log.render().plain if hasattr(chat_log.render(), 'plain') else str(chat_log.render())
-            # Verify that both the user question and the answer appeared
-            bubbles = chat_log.query("MessageBubble")
-            assert len(bubbles) >= 2  # user message + assistant response
+            run_chat_loop(service, title="test")
 
-    @pytest.mark.asyncio
-    async def test_empty_input_does_not_submit(self) -> None:
-        from app.ui.chat_app import FAQChatApp
-        from app.ui.widgets import ChatLog
+            # Verify the service was never called for the empty input
+            service.ask.assert_not_called()
 
-        app = FAQChatApp()
-        async with app.run_test() as pilot:
-            # Press enter on empty input.
-            await pilot.click("#chat-input")
-            await pilot.press("enter")
-            await pilot.pause()
+    def test_calls_service_with_valid_question(self) -> None:
+        """Test that valid questions call the service."""
+        service = AsyncMock(spec=ChatServiceProtocol)
+        service.ask.return_value = ChatResponse(answer="Test Answer")
 
-            chat_log = app.query_one("#chat-log", ChatLog)
-            bubbles = chat_log.query("MessageBubble")
-            assert len(bubbles) == 0  # no message added
+        with patch("rich.console.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+            # Ask a question, then exit
+            mock_console.input.side_effect = ["Hello Bot?", EOFError()]
 
-    @pytest.mark.asyncio
-    async def test_custom_title_applied(self) -> None:
-        from app.ui.chat_app import FAQChatApp
+            from app.ui.chat_app import run_chat_loop
 
-        app = FAQChatApp(title="MyBot")
-        async with app.run_test() as pilot:
-            assert app.title == "MyBot"
+            run_chat_loop(service, title="test")
 
-    @pytest.mark.asyncio
-    async def test_error_handling_shows_status(self) -> None:
-        from app.ui.chat_app import FAQChatApp
-        from app.ui.widgets import StatusIndicator
+            # Verify the service was called with the question
+            service.ask.assert_called_once_with("Hello Bot?")
 
-        class FailingService:
-            async def ask(self, question: str) -> ChatResponse:
-                raise RuntimeError("Service unavailable")
+    def test_prints_answer_on_success(self) -> None:
+        """Test that successful answers are printed."""
+        service = AsyncMock(spec=ChatServiceProtocol)
+        service.ask.return_value = ChatResponse(answer="Test Answer")
 
-        app = FAQChatApp(chat_service=FailingService())
-        async with app.run_test() as pilot:
-            await pilot.click("#chat-input")
-            await pilot.press("H", "i")
-            await pilot.press("enter")
-            await pilot.pause()
+        with patch("rich.console.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+            mock_console.input.side_effect = ["What?", EOFError()]
 
-            status = app.query_one("#status-indicator", StatusIndicator)
-            assert status.has_class("error")
+            from app.ui.chat_app import run_chat_loop
+
+            run_chat_loop(service, title="test")
+
+            # Verify the answer was printed
+            calls = [str(call) for call in mock_console.print.call_args_list]
+            answer_printed = any("Test Answer" in str(call) for call in calls)
+            assert answer_printed
+
+    def test_prints_error_on_service_exception(self) -> None:
+        """Test that service exceptions are caught and printed."""
+        service = AsyncMock(spec=ChatServiceProtocol)
+        service.ask.side_effect = RuntimeError("Service error")
+
+        with patch("rich.console.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+            mock_console.input.side_effect = ["Help!", EOFError()]
+
+            from app.ui.chat_app import run_chat_loop
+
+            run_chat_loop(service, title="test")
+
+            # Verify the error was printed
+            calls = [str(call) for call in mock_console.print.call_args_list]
+            error_printed = any("Service error" in str(call) for call in calls)
+            assert error_printed
+
+    def test_custom_title(self) -> None:
+        """Test that custom title is used."""
+        service = StubChatService()
+
+        with patch("rich.console.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+            mock_console.input.side_effect = EOFError()
+
+            from app.ui.chat_app import run_chat_loop
+
+            run_chat_loop(service, title="MyCustomBot")
+
+            # Verify title was in the print calls
+            calls = [str(call) for call in mock_console.print.call_args_list]
+            title_printed = any("MyCustomBot" in str(call) for call in calls)
+            assert title_printed
+
+    def test_strips_whitespace_from_input(self) -> None:
+        """Test that whitespace is stripped from user input."""
+        service = AsyncMock(spec=ChatServiceProtocol)
+        service.ask.return_value = ChatResponse(answer="OK")
+
+        with patch("rich.console.Console") as mock_console_class:
+            mock_console = MagicMock()
+            mock_console_class.return_value = mock_console
+            # Question with leading/trailing whitespace
+            mock_console.input.side_effect = ["  question with spaces  ", EOFError()]
+
+            from app.ui.chat_app import run_chat_loop
+
+            run_chat_loop(service, title="test")
+
+            # Verify the service was called with stripped input
+            service.ask.assert_called_once_with("question with spaces")

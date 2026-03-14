@@ -25,19 +25,18 @@ def build_startup_message(settings: AppSettings) -> str:
     )
 
 
-def _run_tui(settings: AppSettings) -> int:
-    """Launch the Textual terminal UI."""
+def _run_chat(settings: AppSettings) -> int:
+    """Launch the rich-based chat loop."""
 
-    from app.ui.chat_app import FAQChatApp
+    from app.ui.chat_app import run_chat_loop
 
     service = _build_tui_service(settings)
-    app = FAQChatApp(chat_service=service, title=settings.app_name)
-    app.run()
+    run_chat_loop(service, title=settings.app_name)
     return 0
 
 
 def _build_tui_service(settings: AppSettings) -> "ChatServiceProtocol":
-    """Build the chat backend used by the TUI."""
+    """Build the chat backend used by the chat loop."""
 
     from app.ui.protocol import ChatServiceAdapter, StubChatService
 
@@ -64,7 +63,7 @@ def main() -> int:
 
     if tui_mode:
         logger.info("Launching Terminal UI")
-        return _run_tui(settings)
+        return _run_chat(settings)
 
     logger.info("Application core services initialized")
     print(build_startup_message(settings))
