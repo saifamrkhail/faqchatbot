@@ -1,6 +1,7 @@
 services:
   ollama:
     image: ollama/ollama:0.18.0
+    restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
@@ -28,6 +29,7 @@ services:
 
   qdrant:
     image: qdrant/qdrant:v1.17.1
+    restart: unless-stopped
     ports:
       - "6333:6333"
     volumes:
@@ -43,6 +45,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
       FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
       FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333

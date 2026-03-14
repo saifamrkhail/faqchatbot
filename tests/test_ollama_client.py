@@ -105,10 +105,11 @@ def test_request_json_wraps_transport_errors(monkeypatch: pytest.MonkeyPatch) ->
         generate_max_tokens=160,
     )
 
-    def raise_url_error(*args, **kwargs):  # type: ignore[no-untyped-def]
-        raise error.URLError("connection refused")
+    import httpx
+    def raise_request_error(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise httpx.RequestError("connection refused", request=httpx.Request("GET", "http://ollama.local"))
 
-    monkeypatch.setattr("urllib.request.urlopen", raise_url_error)
+    monkeypatch.setattr("httpx.Client.request", raise_request_error)
 
     with pytest.raises(OllamaClientError, match="Could not reach Ollama"):
         client._request_json("GET", "/api/version")
