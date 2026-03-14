@@ -23,8 +23,8 @@ services:
         condition: service_healthy
     entrypoint: ["/bin/sh", "-c"]
     command: >
-      ollama pull qwen3.5:0.8b &&
-      ollama pull nomic-embed-text
+      ollama pull qwen3.5:2b &&
+      ollama pull nomic-embed-text-v2-moe
 
   qdrant:
     image: qdrant/qdrant:v1.17.1
@@ -71,8 +71,8 @@ services:
       FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
       FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333
       FAQ_CHATBOT_OLLAMA_BASE_URL: http://ollama:11434
-      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:0.8b
-      FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text
+      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:2b
+      FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text-v2-moe
       FAQ_CHATBOT_QDRANT_COLLECTION_NAME: faq_entries
     depends_on:
       ollama-models:

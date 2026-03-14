@@ -44,8 +44,6 @@ docker compose version
 
 ```bash
 # Bauen Sie das App-Image und starten Sie alle Services
-docker compose up --build
-# oder
 docker compose up --build app
 
 # Oder im Hintergrund:

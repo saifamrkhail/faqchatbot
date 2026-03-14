@@ -11,8 +11,8 @@ Before running Phase 4 verification, ensure you have:
    - Qdrant running on `http://localhost:6333`
 
 2. **Ollama Models Deployed**:
-   - Embedding model: `nomic-embed-text`
-   - Generation model: `qwen3:8b` (for later phases)
+   - Embedding model: `nomic-embed-text-v2-moe`
+   - Generation model: `qwen3.5:2b` (for later phases)
 
 3. **Python Environment**:
    ```bash
@@ -152,7 +152,7 @@ asyncio.run(check())
 "
 
 # Expected output:
-# Embedding dimension: 384 (for nomic-embed-text)
+# Embedding dimension: 384 (for nomic-embed-text-v2-moe)
 # Embedding vector length: 384
 # First 5 values: [0.xxx, 0.xxx, ...]
 ```
@@ -216,7 +216,7 @@ Vector dimensions do not match ...
 
 **Solution:**
 1. Check configured embedding model matches deployed model
-2. Verify Ollama model is correct: `OLLAMA_EMBEDDING_MODEL=nomic-embed-text`
+2. Verify Ollama model is correct: `OLLAMA_EMBEDDING_MODEL=nomic-embed-text-v2-moe`
 3. If changed, delete and recreate collection in Qdrant
 
 ### Issue: FAQ Validation Error

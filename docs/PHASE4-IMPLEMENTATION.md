@@ -316,8 +316,8 @@ Phase 4 uses configuration from Phase 1 (AppSettings):
 ```python
 # In environment (prefixed with FAQ_CHATBOT_)
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_EMBEDDING_MODEL=nomic-embed-text
-OLLAMA_GENERATE_MODEL=qwen3:8b
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text-v2-moe
+OLLAMA_GENERATE_MODEL=qwen3.5:2b
 QDRANT_URL=http://localhost:6333
 QDRANT_COLLECTION_NAME=faq_entries
 TOP_K=3
