@@ -14,6 +14,8 @@ def test_ollama_client_from_settings_uses_central_configuration() -> None:
         ollama_generate_model="llama-test",
         ollama_embedding_model="embed-test",
         ollama_timeout_seconds=12.5,
+        ollama_generate_temperature=0.2,
+        ollama_generate_max_tokens=120,
     )
 
     client = OllamaClient.from_settings(settings)
@@ -22,6 +24,8 @@ def test_ollama_client_from_settings_uses_central_configuration() -> None:
     assert client.generate_model == "llama-test"
     assert client.embedding_model == "embed-test"
     assert client.timeout_seconds == pytest.approx(12.5)
+    assert client.generate_temperature == pytest.approx(0.2)
+    assert client.generate_max_tokens == 120
 
 
 def test_embed_text_builds_expected_request_payload(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -30,6 +34,8 @@ def test_embed_text_builds_expected_request_payload(monkeypatch: pytest.MonkeyPa
         generate_model="gen",
         embedding_model="embed",
         timeout_seconds=30.0,
+        generate_temperature=0.1,
+        generate_max_tokens=160,
     )
     recorded: dict[str, object] = {}
 
@@ -59,6 +65,8 @@ def test_generate_builds_expected_request_payload(monkeypatch: pytest.MonkeyPatc
         generate_model="gen",
         embedding_model="embed",
         timeout_seconds=30.0,
+        generate_temperature=0.1,
+        generate_max_tokens=160,
     )
     recorded: dict[str, object] = {}
 
@@ -78,7 +86,12 @@ def test_generate_builds_expected_request_payload(monkeypatch: pytest.MonkeyPatc
     assert recorded == {
         "method": "POST",
         "path": "/api/generate",
-        "payload": {"model": "gen", "prompt": "Bitte antworten", "stream": False},
+        "payload": {
+            "model": "gen",
+            "prompt": "Bitte antworten",
+            "stream": False,
+            "options": {"temperature": 0.1, "num_predict": 160},
+        },
     }
 
 
@@ -88,6 +101,8 @@ def test_request_json_wraps_transport_errors(monkeypatch: pytest.MonkeyPatch) ->
         generate_model="gen",
         embedding_model="embed",
         timeout_seconds=30.0,
+        generate_temperature=0.1,
+        generate_max_tokens=160,
     )
 
     def raise_url_error(*args, **kwargs):  # type: ignore[no-untyped-def]

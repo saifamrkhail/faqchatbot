@@ -20,12 +20,16 @@ DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_OLLAMA_GENERATE_MODEL = "qwen3:8b"
 DEFAULT_OLLAMA_EMBEDDING_MODEL = "nomic-embed-text"
 DEFAULT_OLLAMA_TIMEOUT_SECONDS = 30.0
+DEFAULT_OLLAMA_GENERATE_TEMPERATURE = 0.1
+DEFAULT_OLLAMA_GENERATE_MAX_TOKENS = 160
 DEFAULT_QDRANT_URL = "http://localhost:6333"
 DEFAULT_QDRANT_COLLECTION_NAME = "faq_entries"
 DEFAULT_QDRANT_TIMEOUT_SECONDS = 30.0
 DEFAULT_TOP_K = 3
 DEFAULT_SCORE_THRESHOLD = 0.70
 DEFAULT_FALLBACK_MESSAGE = "Leider konnte ich Ihre Frage nicht verstehen."
+DEFAULT_MAX_QUESTION_CHARS = 500
+DEFAULT_USE_STUB_UI_SERVICE = False
 
 
 class SettingsError(ValueError):
@@ -45,12 +49,16 @@ class AppSettings:
     ollama_generate_model: str = DEFAULT_OLLAMA_GENERATE_MODEL
     ollama_embedding_model: str = DEFAULT_OLLAMA_EMBEDDING_MODEL
     ollama_timeout_seconds: float = DEFAULT_OLLAMA_TIMEOUT_SECONDS
+    ollama_generate_temperature: float = DEFAULT_OLLAMA_GENERATE_TEMPERATURE
+    ollama_generate_max_tokens: int = DEFAULT_OLLAMA_GENERATE_MAX_TOKENS
     qdrant_url: str = DEFAULT_QDRANT_URL
     qdrant_collection_name: str = DEFAULT_QDRANT_COLLECTION_NAME
     qdrant_timeout_seconds: float = DEFAULT_QDRANT_TIMEOUT_SECONDS
     top_k: int = DEFAULT_TOP_K
     score_threshold: float = DEFAULT_SCORE_THRESHOLD
     fallback_message: str = DEFAULT_FALLBACK_MESSAGE
+    max_question_chars: int = DEFAULT_MAX_QUESTION_CHARS
+    use_stub_ui_service: bool = DEFAULT_USE_STUB_UI_SERVICE
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "AppSettings":
@@ -59,7 +67,7 @@ class AppSettings:
         app_name = _get_string(env, "APP_NAME", DEFAULT_APP_NAME)
         environment = _get_string(env, "ENVIRONMENT", DEFAULT_ENVIRONMENT).lower()
         log_level = _parse_log_level(_get_string(env, "LOG_LEVEL", DEFAULT_LOG_LEVEL))
-        debug = _parse_bool(_get_string(env, "DEBUG", str(DEFAULT_DEBUG)))
+        debug = _parse_bool(_get_string(env, "DEBUG", str(DEFAULT_DEBUG)), "DEBUG")
         faq_data_path = _get_string(env, "FAQ_DATA_PATH", DEFAULT_FAQ_DATA_PATH)
         ollama_base_url = _get_string(env, "OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL)
         ollama_generate_model = _get_string(
@@ -77,6 +85,25 @@ class AppSettings:
             "OLLAMA_TIMEOUT_SECONDS",
             minimum=0.1,
             maximum=300.0,
+        )
+        ollama_generate_temperature = _parse_float(
+            _get_string(
+                env,
+                "OLLAMA_GENERATE_TEMPERATURE",
+                str(DEFAULT_OLLAMA_GENERATE_TEMPERATURE),
+            ),
+            "OLLAMA_GENERATE_TEMPERATURE",
+            minimum=0.0,
+            maximum=2.0,
+        )
+        ollama_generate_max_tokens = _parse_int(
+            _get_string(
+                env,
+                "OLLAMA_GENERATE_MAX_TOKENS",
+                str(DEFAULT_OLLAMA_GENERATE_MAX_TOKENS),
+            ),
+            "OLLAMA_GENERATE_MAX_TOKENS",
+            minimum=1,
         )
         qdrant_url = _get_string(env, "QDRANT_URL", DEFAULT_QDRANT_URL)
         qdrant_collection_name = _get_string(
@@ -106,6 +133,23 @@ class AppSettings:
         fallback_message = _get_string(
             env, "FALLBACK_MESSAGE", DEFAULT_FALLBACK_MESSAGE
         )
+        max_question_chars = _parse_int(
+            _get_string(
+                env,
+                "MAX_QUESTION_CHARS",
+                str(DEFAULT_MAX_QUESTION_CHARS),
+            ),
+            "MAX_QUESTION_CHARS",
+            minimum=1,
+        )
+        use_stub_ui_service = _parse_bool(
+            _get_string(
+                env,
+                "USE_STUB_UI_SERVICE",
+                str(DEFAULT_USE_STUB_UI_SERVICE),
+            ),
+            "USE_STUB_UI_SERVICE",
+        )
 
         if not environment:
             raise SettingsError("ENVIRONMENT must not be empty")
@@ -120,12 +164,16 @@ class AppSettings:
             ollama_generate_model=ollama_generate_model,
             ollama_embedding_model=ollama_embedding_model,
             ollama_timeout_seconds=ollama_timeout_seconds,
+            ollama_generate_temperature=ollama_generate_temperature,
+            ollama_generate_max_tokens=ollama_generate_max_tokens,
             qdrant_url=qdrant_url,
             qdrant_collection_name=qdrant_collection_name,
             qdrant_timeout_seconds=qdrant_timeout_seconds,
             top_k=top_k,
             score_threshold=score_threshold,
             fallback_message=fallback_message,
+            max_question_chars=max_question_chars,
+            use_stub_ui_service=use_stub_ui_service,
         )
 
 
@@ -163,13 +211,13 @@ def _get_string(env: Mapping[str, str], key: str, default: str) -> str:
     return stripped
 
 
-def _parse_bool(value: str) -> bool:
+def _parse_bool(value: str, key: str) -> bool:
     normalized = value.strip().lower()
     if normalized in {"1", "true", "yes", "on"}:
         return True
     if normalized in {"0", "false", "no", "off"}:
         return False
-    raise SettingsError("DEBUG must be a boolean value")
+    raise SettingsError(f"{key} must be a boolean value")
 
 
 def _parse_int(value: str, key: str, *, minimum: int) -> int:

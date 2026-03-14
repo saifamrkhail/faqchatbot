@@ -35,6 +35,13 @@ uv sync
 cp .env.example .env
 ```
 
+Wichtige Runtime-Parameter:
+
+- `FAQ_CHATBOT_OLLAMA_GENERATE_TEMPERATURE=0.1`
+- `FAQ_CHATBOT_OLLAMA_GENERATE_MAX_TOKENS=160`
+- `FAQ_CHATBOT_MAX_QUESTION_CHARS=500`
+- `FAQ_CHATBOT_USE_STUB_UI_SERVICE=false`
+
 ## FAQ-Daten ingestieren
 
 ```bash
@@ -70,6 +77,7 @@ docker compose run --rm ingest
 ```
 
 Hinweis: Ollama wird standardmäßig **extern** auf dem Host erwartet (`host.docker.internal:11434`).
+Die TUI nutzt standardmäßig den echten Chat-Service; nur mit `FAQ_CHATBOT_USE_STUB_UI_SERVICE=true` fällt sie auf den Stub zurück.
 
 ## Qualitätssicherung
 

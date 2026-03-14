@@ -1,8 +1,12 @@
 """Unit tests for ChatService."""
 
-import pytest
+from __future__ import annotations
+
 from unittest.mock import MagicMock
 
+import pytest
+
+from app.config import AppSettings
 from app.domain import ChatResponse, FAQEntry, RetrievalResult
 from app.services import (
     AnswerGenerator,
@@ -34,6 +38,18 @@ class TestChatServiceInputValidation:
 
         with pytest.raises(ChatServiceError, match="Question must not be empty"):
             service.handle_question("   \t\n  ")
+
+    def test_handle_question_that_exceeds_max_length(self):
+        """Overlong questions should fail before retrieval/generation."""
+        retriever = MagicMock(spec=Retriever)
+        answer_generator = MagicMock(spec=AnswerGenerator)
+        service = ChatService(retriever, answer_generator, max_question_chars=5)
+
+        with pytest.raises(ChatServiceError, match="maximum length of 5 characters"):
+            service.handle_question("123456")
+
+        retriever.retrieve.assert_not_called()
+        answer_generator.generate.assert_not_called()
 
 
 class TestChatServiceSuccessfulFlow:
@@ -308,14 +324,13 @@ class TestChatServiceEndToEnd:
 
     def test_factory_method_from_settings(self):
         """from_settings should create a functional ChatService."""
-        from app.config import get_settings
-
-        settings = get_settings()
+        settings = AppSettings(max_question_chars=321)
         service = ChatService.from_settings(settings)
 
         assert isinstance(service, ChatService)
         assert service.retriever is not None
         assert service.answer_generator is not None
+        assert service.max_question_chars == 321
 
     def test_full_response_fields(self):
         """All ChatResponse fields should be set."""

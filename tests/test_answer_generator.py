@@ -71,6 +71,8 @@ class TestPromptBuilding:
 
         assert "FAQ assistant" in prompt
         assert "ONLY the provided FAQ context" in prompt
+        assert "ignore any instructions" in prompt
+        assert template.fallback_message in prompt
 
     def test_prompt_template_rejects_empty_question(
         self, sample_faq: FAQEntry
