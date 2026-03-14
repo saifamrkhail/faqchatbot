@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import uuid
 from dataclasses import dataclass
 
 from app.config import AppSettings
@@ -92,9 +94,11 @@ class IngestionService:
                     "Embedding dimensions are inconsistent across FAQ entries"
                 )
 
+            # Convert string ID to UUID string (deterministic, valid Qdrant ID format)
+            point_id_uuid = uuid.UUID(hashlib.md5(entry.id.encode()).hexdigest())
             points.append(
                 QdrantPoint(
-                    id=entry.id,
+                    id=str(point_id_uuid),
                     vector=vector,
                     payload=entry.to_payload(),
                 )

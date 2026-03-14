@@ -1,10 +1,31 @@
 services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+
   qdrant:
     image: qdrant/qdrant:v1.13.2
     ports:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
 
   app:
     build:
@@ -13,16 +34,17 @@ services:
     environment:
       FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
       FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333
-      FAQ_CHATBOT_OLLAMA_BASE_URL: http://host.docker.internal:11434
-      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3:8b
+      FAQ_CHATBOT_OLLAMA_BASE_URL: http://ollama:11434
+      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:0.8b
       FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text
       FAQ_CHATBOT_TOP_K: "3"
       FAQ_CHATBOT_SCORE_THRESHOLD: "0.70"
       FAQ_CHATBOT_FALLBACK_MESSAGE: Leider konnte ich Ihre Frage nicht verstehen.
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
-      - qdrant
+      ollama:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
     stdin_open: true
     tty: true
     command: ["faqchatbot", "--tui"]
@@ -34,16 +56,18 @@ services:
     environment:
       FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
       FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333
-      FAQ_CHATBOT_OLLAMA_BASE_URL: http://host.docker.internal:11434
+      FAQ_CHATBOT_OLLAMA_BASE_URL: http://ollama:11434
       FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text
       FAQ_CHATBOT_QDRANT_COLLECTION_NAME: faq_entries
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
-      - qdrant
+      ollama:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
     command: ["python", "-m", "scripts.ingest"]
     profiles:
       - tooling
 
 volumes:
+  ollama_data:
   qdrant_data:
