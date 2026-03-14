@@ -6,7 +6,18 @@ import asyncio
 
 import pytest
 
-from app.ui.protocol import ChatResponse, ChatServiceProtocol, StubChatService
+from app.domain import ChatResponse as DomainChatResponse
+from app.ui.protocol import (
+    ChatResponse,
+    ChatServiceAdapter,
+    ChatServiceProtocol,
+    StubChatService,
+)
+
+try:
+    import textual  # noqa: F401
+except ModuleNotFoundError:
+    textual = None
 
 
 # ---------------------------------------------------------------------------
@@ -50,10 +61,53 @@ class TestStubChatService:
         assert len(resp.answer) > 0
 
 
+class TestChatServiceAdapter:
+    def test_satisfies_protocol(self) -> None:
+        class CoreService:
+            def handle_question(self, question: str) -> DomainChatResponse:
+                return DomainChatResponse(
+                    question=question,
+                    answer="Antwort",
+                    is_fallback=False,
+                    confidence=0.9,
+                    source_faq_id="faq-01",
+                    used_retrieval=True,
+                )
+
+        assert isinstance(ChatServiceAdapter(CoreService()), ChatServiceProtocol)
+
+    @pytest.mark.asyncio
+    async def test_maps_domain_response_to_ui_response(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class CoreService:
+            def handle_question(self, question: str) -> DomainChatResponse:
+                return DomainChatResponse(
+                    question=question,
+                    answer="Antwort",
+                    is_fallback=False,
+                    confidence=0.9,
+                    source_faq_id="faq-01",
+                    used_retrieval=True,
+                )
+
+        async def run_inline(func, *args):
+            return func(*args)
+
+        monkeypatch.setattr("app.ui.protocol.asyncio.to_thread", run_inline)
+
+        response = await ChatServiceAdapter(CoreService()).ask("Frage")
+
+        assert response.answer == "Antwort"
+        assert response.source_faq == "faq-01"
+        assert response.is_fallback is False
+
+
 # ---------------------------------------------------------------------------
 # Widget unit tests (no full app mount required)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(textual is None, reason="textual is not installed")
 class TestWidgetImports:
     """Verify all widgets can be imported without errors."""
 
@@ -78,6 +132,7 @@ class TestWidgetImports:
 # FAQChatApp integration tests (Textual pilot)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(textual is None, reason="textual is not installed")
 class TestFAQChatApp:
     @pytest.mark.asyncio
     async def test_app_mounts_and_has_expected_widgets(self) -> None:

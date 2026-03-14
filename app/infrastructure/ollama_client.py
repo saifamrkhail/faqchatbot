@@ -26,6 +26,8 @@ class OllamaClient:
     generate_model: str
     embedding_model: str
     timeout_seconds: float
+    generate_temperature: float
+    generate_max_tokens: int
 
     @classmethod
     def from_settings(cls, settings: AppSettings) -> "OllamaClient":
@@ -36,6 +38,8 @@ class OllamaClient:
             generate_model=settings.ollama_generate_model,
             embedding_model=settings.ollama_embedding_model,
             timeout_seconds=settings.ollama_timeout_seconds,
+            generate_temperature=settings.ollama_generate_temperature,
+            generate_max_tokens=settings.ollama_generate_max_tokens,
         )
 
     def embed_text(self, text: str) -> list[float]:
@@ -75,6 +79,10 @@ class OllamaClient:
                 "model": self.generate_model,
                 "prompt": normalized_prompt,
                 "stream": False,
+                "options": {
+                    "temperature": self.generate_temperature,
+                    "num_predict": self.generate_max_tokens,
+                },
             },
         )
         generated_text = response.get("response")

@@ -30,7 +30,7 @@ class AnswerGenerator:
 
         return cls(
             ollama_client=OllamaClient.from_settings(settings),
-            prompt_template=PromptTemplate(),
+            prompt_template=PromptTemplate(fallback_message=settings.fallback_message),
             fallback_message=settings.fallback_message,
         )
 

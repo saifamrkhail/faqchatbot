@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import sys
+from typing import TYPE_CHECKING
 
 from app.config import AppSettings, SettingsError, get_settings
 from app.logging import configure_logging
+from app.services import ChatService
+
+if TYPE_CHECKING:
+    from app.ui.protocol import ChatServiceProtocol
 
 
 def build_startup_message(settings: AppSettings) -> str:
@@ -23,13 +28,22 @@ def build_startup_message(settings: AppSettings) -> str:
 def _run_tui(settings: AppSettings) -> int:
     """Launch the Textual terminal UI."""
 
-    from app.ui import FAQChatApp, StubChatService
+    from app.ui.chat_app import FAQChatApp
 
-    # Use StubChatService until Module 07 provides the real service.
-    service = StubChatService()
+    service = _build_tui_service(settings)
     app = FAQChatApp(chat_service=service, title=settings.app_name)
     app.run()
     return 0
+
+
+def _build_tui_service(settings: AppSettings) -> "ChatServiceProtocol":
+    """Build the chat backend used by the TUI."""
+
+    from app.ui.protocol import ChatServiceAdapter, StubChatService
+
+    if settings.use_stub_ui_service:
+        return StubChatService()
+    return ChatServiceAdapter(ChatService.from_settings(settings))
 
 
 def main() -> int:
