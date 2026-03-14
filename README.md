@@ -67,7 +67,7 @@ uv run faqchatbot --tui
 Qdrant + App-TUI starten:
 
 ```bash
-docker compose up --build app qdrant
+docker compose up --build app
 ```
 
 Ingestion als One-Off ausführen:
@@ -76,7 +76,7 @@ Ingestion als One-Off ausführen:
 docker compose run --rm ingest
 ```
 
-Hinweis: Ollama wird standardmäßig **extern** auf dem Host erwartet (`host.docker.internal:11434`).
+Im Compose-Stack sind Ollama `0.18.0`, ein einmaliger Modell-Bootstrap und Qdrant `1.17.1` bereits enthalten.
 Die TUI nutzt standardmäßig den echten Chat-Service; nur mit `FAQ_CHATBOT_USE_STUB_UI_SERVICE=true` fällt sie auf den Stub zurück.
 
 ## Qualitätssicherung

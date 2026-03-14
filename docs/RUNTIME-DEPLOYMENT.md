@@ -5,14 +5,14 @@
 Reproduzierbarer Betrieb des FAQ-Chatbots in zwei Modi:
 
 1. Lokal mit Python/uv
-2. Docker-basiert mit Qdrant-Container und externer Ollama-Instanz
+2. Docker-basiert mit gebuendeltem Ollama- und Qdrant-Stack
 
 ## Laufzeitkomponenten
 
 - **App**: `faqchatbot` (`app.cli:main`)
 - **Ingestion**: `python -m scripts.ingest`
 - **Vector Store**: Qdrant
-- **LLM/Embeddings**: Ollama (extern, hostseitig)
+- **LLM/Embeddings**: Ollama
 
 ## Lokaler Betrieb
 
@@ -42,10 +42,10 @@ uv run faqchatbot --tui
 
 ## Docker-Betrieb
 
-### App + Qdrant starten
+### App + Runtime-Services starten
 
 ```bash
-docker compose up --build app qdrant
+docker compose up --build app
 ```
 
 ### Ingestion als One-Off
@@ -74,4 +74,5 @@ Wichtige Runtime-Variablen:
 - Ingestion bleibt ein separater Schritt (nicht im App-Start versteckt).
 - Embedding-Modell für Ingestion und Query muss identisch sein.
 - Bei Retrieval unterhalb Threshold liefert der Bot deterministisch die Fallback-Antwort.
-- In Docker wird Ollama standardmäßig über `host.docker.internal` angesprochen.
+- Im Compose-Stack laufen Ollama `0.18.0` und Qdrant `1.17.1` containerisiert.
+- Der Service `ollama-models` zieht vor App/Ingestion die benoetigten Modelle `qwen3.5:0.8b` und `nomic-embed-text`.

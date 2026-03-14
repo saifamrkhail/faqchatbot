@@ -1,6 +1,6 @@
 services:
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.18.0
     ports:
       - "11434:11434"
     volumes:
@@ -14,8 +14,20 @@ services:
       retries: 10
       start_period: 45s
 
+  ollama-models:
+    image: ollama/ollama:0.18.0
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      ollama pull qwen3.5:0.8b &&
+      ollama pull nomic-embed-text
+
   qdrant:
-    image: qdrant/qdrant:v1.13.2
+    image: qdrant/qdrant:v1.17.1
     ports:
       - "6333:6333"
     volumes:
@@ -41,6 +53,8 @@ services:
       FAQ_CHATBOT_SCORE_THRESHOLD: "0.70"
       FAQ_CHATBOT_FALLBACK_MESSAGE: Leider konnte ich Ihre Frage nicht verstehen.
     depends_on:
+      ollama-models:
+        condition: service_completed_successfully
       ollama:
         condition: service_healthy
       qdrant:
@@ -57,9 +71,12 @@ services:
       FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
       FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333
       FAQ_CHATBOT_OLLAMA_BASE_URL: http://ollama:11434
+      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:0.8b
       FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text
       FAQ_CHATBOT_QDRANT_COLLECTION_NAME: faq_entries
     depends_on:
+      ollama-models:
+        condition: service_completed_successfully
       ollama:
         condition: service_healthy
       qdrant:

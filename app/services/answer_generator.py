@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 
 from app.config import AppSettings
 from app.domain import FAQEntry
@@ -69,6 +70,14 @@ class AnswerGenerator:
 
             prompt = self._build_prompt(normalized_question, retrieval.matched_entry)
             answer = self._generate_answer(prompt)
+            if not self._is_grounded_answer(answer, retrieval.matched_entry):
+                return AnswerResponse(
+                    answer=self._get_fallback_answer(),
+                    confidence=retrieval.score,
+                    source_faq_id=None,
+                    is_fallback=True,
+                    used_retrieval=False,
+                )
 
             return AnswerResponse(
                 answer=answer,
@@ -109,3 +118,33 @@ class AnswerGenerator:
         """Get the configured fallback message."""
 
         return self.fallback_message
+
+    def _is_grounded_answer(self, answer: str, faq_entry: FAQEntry) -> bool:
+        """Return True if the generated answer still looks anchored in the FAQ."""
+
+        normalized_answer = answer.strip()
+        if len(normalized_answer) > max(400, len(faq_entry.answer) * 2):
+            return False
+
+        answer_terms = _extract_terms(normalized_answer)
+        source_terms = _extract_terms(
+            " ".join(
+                part
+                for part in (
+                    faq_entry.question,
+                    faq_entry.answer,
+                    faq_entry.category or "",
+                    " ".join(faq_entry.tags),
+                )
+                if part
+            )
+        )
+        return not answer_terms or bool(answer_terms & source_terms)
+
+
+def _extract_terms(text: str) -> set[str]:
+    return {
+        term
+        for term in re.findall(r"[A-Za-z0-9À-ÿ]{4,}", text.casefold())
+        if term not in {"this", "that", "with", "from", "your", "have", "will"}
+    }

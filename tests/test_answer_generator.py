@@ -100,7 +100,9 @@ class TestAnswerGeneratorWithRetrieval:
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test answer generation when FAQ is retrieved."""
-        answer_generator.ollama_client.generate.return_value = "Generated answer"
+        answer_generator.ollama_client.generate.return_value = (
+            "Visit the login page and click Forgot Password."
+        )
 
         retrieval = RetrievalResult(
             matched_entry=sample_faq,
@@ -111,7 +113,7 @@ class TestAnswerGeneratorWithRetrieval:
 
         result = answer_generator.generate("How do I reset my password?", retrieval)
 
-        assert result.answer == "Generated answer"
+        assert result.answer == "Visit the login page and click Forgot Password."
         assert result.confidence == 0.85
         assert result.source_faq_id == "faq-001"
         assert result.is_fallback is False
@@ -121,7 +123,9 @@ class TestAnswerGeneratorWithRetrieval:
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test that generation calls Ollama with grounded prompt."""
-        answer_generator.ollama_client.generate.return_value = "Answer"
+        answer_generator.ollama_client.generate.return_value = (
+            "Visit the login page and click Forgot Password."
+        )
 
         retrieval = RetrievalResult(
             matched_entry=sample_faq,
@@ -145,7 +149,9 @@ class TestAnswerGeneratorWithRetrieval:
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test that generated answers have whitespace cleaned."""
-        answer_generator.ollama_client.generate.return_value = "  \n  Answer text  \n  "
+        answer_generator.ollama_client.generate.return_value = (
+            "  \n  Visit the login page and click Forgot Password.  \n  "
+        )
 
         retrieval = RetrievalResult(
             matched_entry=sample_faq,
@@ -156,7 +162,7 @@ class TestAnswerGeneratorWithRetrieval:
 
         result = answer_generator.generate("Q?", retrieval)
 
-        assert result.answer == "Answer text"
+        assert result.answer == "Visit the login page and click Forgot Password."
 
 
 class TestAnswerGeneratorWithFallback:
@@ -212,6 +218,27 @@ class TestAnswerGeneratorWithFallback:
 
         # Ollama should not be called for fallback
         assert not answer_generator.ollama_client.generate.called
+
+    def test_off_topic_generated_answer_falls_back(
+        self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
+    ) -> None:
+        """Off-topic answers should be replaced with the deterministic fallback."""
+        answer_generator.ollama_client.generate.return_value = (
+            "The weather in Paris is sunny today."
+        )
+
+        retrieval = RetrievalResult(
+            matched_entry=sample_faq,
+            score=0.85,
+            top_k_results=[(sample_faq, 0.85)],
+            retrieved=True,
+        )
+
+        result = answer_generator.generate("How do I reset my password?", retrieval)
+
+        assert result.answer == answer_generator.fallback_message
+        assert result.is_fallback is True
+        assert result.used_retrieval is False
 
 
 class TestAnswerGeneratorErrorHandling:
@@ -282,7 +309,9 @@ class TestAnswerGeneratorEndToEnd:
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test AnswerResponse structure."""
-        answer_generator.ollama_client.generate.return_value = "Answer"
+        answer_generator.ollama_client.generate.return_value = (
+            "Visit the login page and click Forgot Password."
+        )
 
         retrieval = RetrievalResult(
             matched_entry=sample_faq,
@@ -306,7 +335,9 @@ class TestAnswerGeneratorEndToEnd:
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test that AnswerResponse is immutable."""
-        answer_generator.ollama_client.generate.return_value = "Answer"
+        answer_generator.ollama_client.generate.return_value = (
+            "Visit the login page and click Forgot Password."
+        )
 
         retrieval = RetrievalResult(
             matched_entry=sample_faq,
