@@ -56,6 +56,7 @@ class FAQEntry:
         """Return a JSON-serializable payload for persistence layers."""
 
         payload: dict[str, Any] = {
+            "id": self.id,
             "question": self.question,
             "answer": self.answer,
             "tags": list(self.tags),

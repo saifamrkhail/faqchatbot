@@ -32,8 +32,4 @@ RUN useradd -m -u 1000 appuser && \
 
 USER appuser
 
-# Healthcheck to verify connectivity to services
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:11434/api/tags || exit 1
-
 CMD ["faqchatbot", "--tui"]
