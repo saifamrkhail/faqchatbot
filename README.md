@@ -1,36 +1,139 @@
 # FAQ Chatbot
 
-A local, terminal-based FAQ RAG chatbot with **Textual** UI, **Ollama** (embeddings & generation), and **Qdrant** (vector store).
+A local, terminal-based FAQ RAG chatbot with **Rich** UI, **Ollama** (embeddings & generation), and **Qdrant** (vector store).
 
 The bot answers questions **only from FAQ context** and returns a deterministic fallback message when confidence is low.
 
 ---
 
-## Quick Start (Docker) 🐳
+## Quick Start 🚀
 
 ### Prerequisites
-- **Docker** & **Docker Compose** (v2.0+)
+- **Docker** & **Docker Compose** (v2.0+) — OR —
+- **Python 3.11+** and **uv** for local development
 - ~5 GB disk space (for models)
 - Internet connection (first run downloads models)
 
-### 1. Start Services
+---
+
+## Setup & Run (Docker) 🐳
+
+### 1. Pull Required Ollama Models
+Before starting, download the models (one-time, ~2-3 GB):
+
+```bash
+ollama pull nomic-embed-text-v2-moe
+ollama pull qwen3.5:2b
+```
+
+### 2. Start Services
 ```bash
 docker compose up --build app
 ```
-This starts Ollama, Qdrant, and downloads models (~1-2 min on first run).
 
-### 2. Ingest FAQ Data
+This starts:
+- **Ollama** on `http://localhost:11434`
+- **Qdrant** on `http://localhost:6333`
+- **App** (ready to ingest)
+
+Wait for logs showing readiness (~30 seconds).
+
+### 3. Ingest FAQ Data (in another terminal)
 ```bash
-# In another terminal
 docker compose run --rm ingest
 ```
 
-### 3. Chat
-```bash
-docker compose up app
+Expected output:
+```
+✓ Loaded 10 FAQ entries
+✓ Generated 10 embeddings
+✓ Stored vectors in Qdrant
 ```
 
-Enter questions like: *"Welche IT-Dienstleistungen bieten Sie an?"*
+### 4. Start the Chat
+```bash
+docker compose up app --tui
+```
+
+Enter questions like:
+- *"Welche IT-Dienstleistungen bieten Sie an?"*
+- *"Wie kann ich Support kontaktieren?"*
+
+Press **Ctrl+C** to exit.
+
+---
+
+## Setup & Run (Local Development) 💻
+
+### 1. Install Dependencies
+```bash
+cd faqchatbot-claude
+uv sync
+```
+
+### 2. Start External Services (Docker)
+```bash
+docker compose up -d ollama qdrant
+```
+
+### 3. Pull Ollama Models
+```bash
+ollama pull nomic-embed-text-v2-moe
+ollama pull qwen3.5:2b
+
+# Verify
+ollama list
+```
+
+### 4. Ingest FAQ Data
+```bash
+make ingest
+```
+
+or
+
+```bash
+uv run python scripts/ingest.py --faq-file data/faq.json --verbose
+```
+
+Expected output:
+```
+✓ Loaded 10 FAQ entries
+✓ Generated 10 embeddings
+✓ Stored vectors in Qdrant
+Ingestion complete: 10 entries, 0 errors
+```
+
+### 5. Run Tests
+```bash
+make test
+# or
+uv run pytest -v
+```
+
+Result: **147 passed, 0 skipped** ✓
+
+### 6. Start the Chat
+```bash
+# Terminal UI mode
+make chat
+# or
+uv run faqchatbot --tui
+
+# Status-only mode
+uv run faqchatbot
+```
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| **Model not found (404)** | Run `ollama pull nomic-embed-text-v2-moe && ollama pull qwen3.5:2b` |
+| **Qdrant connection refused** | Ensure services running: `docker compose up -d` |
+| **Ingest fails with timeout** | Check service health: `docker compose logs ollama` |
+| **Tests fail** | Reset deps: `uv sync --force` |
 
 ---
 
@@ -41,7 +144,7 @@ Enter questions like: *"Welche IT-Dienstleistungen bieten Sie an?"*
 | **Ingestion** | Load FAQ → Generate embeddings → Store in Qdrant |
 | **Retrieval** | Embed user question → Semantic search → Score threshold |
 | **Generation** | Grounded answer from FAQ context or fallback |
-| **TUI** | Rich terminal interface with Textual |
+| **UI** | Terminal chat loop with Rich formatting |
 
 **Models:**
 - Generation: `qwen3.5:2b`
@@ -97,7 +200,7 @@ scripts/
 data/
   └── faq.json           # Sample FAQ (10 German entries)
 
-tests/                   # 149 tests (all passing ✓)
+tests/                   # 147 tests (all passing ✓)
 docs/                    # Detailed documentation
 ```
 
@@ -184,9 +287,9 @@ See `.env.example` for defaults.
 - Retrieval Engine
 - Answer Generation
 - Chat Application Service
-- Terminal UI (Textual)
+- Terminal UI (Rich-based chat loop)
 
-149 tests passing. Production-ready.
+147 tests passing. Production-ready.
 
 ---
 
