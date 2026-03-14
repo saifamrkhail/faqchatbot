@@ -6,6 +6,9 @@ import asyncio
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+from app.domain import ChatResponse as DomainChatResponse
+from app.services import ChatService
+
 
 @dataclass(frozen=True, slots=True)
 class ChatResponse:
@@ -20,11 +23,22 @@ class ChatResponse:
 class ChatServiceProtocol(Protocol):
     """Contract that the UI expects from any chat backend.
 
-    Module 07 (Chat Application Service) will satisfy this protocol.
-    Until then, ``StubChatService`` provides a canned implementation.
+    The UI stays decoupled from the concrete chat pipeline by relying on a
+    small async protocol.
     """
 
     async def ask(self, question: str) -> ChatResponse: ...
+
+
+@dataclass(slots=True)
+class ChatServiceAdapter:
+    """Async adapter for the synchronous core ChatService."""
+
+    chat_service: ChatService
+
+    async def ask(self, question: str) -> ChatResponse:
+        response = await asyncio.to_thread(self.chat_service.handle_question, question)
+        return _to_ui_response(response)
 
 
 class StubChatService:
@@ -49,3 +63,11 @@ class StubChatService:
             source_faq=None,
             is_fallback=True,
         )
+
+
+def _to_ui_response(response: DomainChatResponse) -> ChatResponse:
+    return ChatResponse(
+        answer=response.answer,
+        source_faq=response.source_faq_id,
+        is_fallback=response.is_fallback,
+    )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.config import AppSettings
+from app.config import AppSettings, DEFAULT_MAX_QUESTION_CHARS
 from app.domain.chat_response import ChatResponse
 from app.services.answer_generator import AnswerGenerator, AnswerGeneratorError
 from app.services.retriever import Retriever, RetrieverError
@@ -24,6 +24,7 @@ class ChatService:
 
     retriever: Retriever
     answer_generator: AnswerGenerator
+    max_question_chars: int = DEFAULT_MAX_QUESTION_CHARS
 
     @classmethod
     def from_settings(cls, settings: AppSettings) -> ChatService:
@@ -32,6 +33,7 @@ class ChatService:
         return cls(
             retriever=Retriever.from_settings(settings),
             answer_generator=AnswerGenerator.from_settings(settings),
+            max_question_chars=settings.max_question_chars,
         )
 
     def handle_question(self, question: str) -> ChatResponse:
@@ -49,6 +51,11 @@ class ChatService:
             normalized_question = question.strip()
             if not normalized_question:
                 raise ChatServiceError("Question must not be empty")
+            if len(normalized_question) > self.max_question_chars:
+                raise ChatServiceError(
+                    "Question exceeds maximum length of "
+                    f"{self.max_question_chars} characters"
+                )
 
             # Step 1: Retrieve relevant FAQ
             retrieval_result = self.retriever.retrieve(normalized_question)
