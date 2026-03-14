@@ -37,7 +37,7 @@ Der Bot beantwortet Fragen nur aus FAQ-Kontext und nutzt bei unsicherem Retrieva
 
 ```bash
 docker --version
-docker compose --version
+docker compose version
 ```
 
 #### 2. Starten Sie alle Services (Ollama, Qdrant, App)

@@ -8,11 +8,11 @@ services:
     environment:
       - OLLAMA_HOST=0.0.0.0:11434
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 15s
+      test: ["CMD", "bash", "-c", "echo -n > /dev/tcp/localhost/11434 && echo 'ok'"]
+      interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 45s
+      retries: 30
+      start_period: 120s
 
   qdrant:
     image: qdrant/qdrant:v1.13.2
@@ -21,11 +21,11 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
-      interval: 15s
+      test: ["CMD", "bash", "-c", "echo -n > /dev/tcp/localhost/6333 && echo 'ok'"]
+      interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 45s
+      retries: 20
+      start_period: 30s
 
   app:
     build:
@@ -35,8 +35,8 @@ services:
       FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
       FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333
       FAQ_CHATBOT_OLLAMA_BASE_URL: http://ollama:11434
-      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:0.8b
-      FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text
+      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:2b
+      FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text-v2-moe
       FAQ_CHATBOT_TOP_K: "3"
       FAQ_CHATBOT_SCORE_THRESHOLD: "0.70"
       FAQ_CHATBOT_FALLBACK_MESSAGE: Leider konnte ich Ihre Frage nicht verstehen.
