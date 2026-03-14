@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from typing import Any, Mapping
-from urllib import error, request
+
+import httpx
 
 from app.config import AppSettings
 
@@ -28,6 +29,13 @@ class OllamaClient:
     timeout_seconds: float
     generate_temperature: float
     generate_max_tokens: int
+    _client: httpx.Client = field(init=False)
+
+    def __post_init__(self) -> None:
+        self._client = httpx.Client(
+            base_url=self.base_url,
+            timeout=self.timeout_seconds,
+        )
 
     @classmethod
     def from_settings(cls, settings: AppSettings) -> "OllamaClient":
@@ -96,40 +104,37 @@ class OllamaClient:
         path: str,
         payload: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
-        body = None
-        headers = {"Accept": "application/json"}
-        if payload is not None:
-            body = json.dumps(payload).encode("utf-8")
-            headers["Content-Type"] = "application/json"
-
-        http_request = request.Request(
-            url=f"{self.base_url.rstrip('/')}/{path.lstrip('/')}",
-            data=body,
-            headers=headers,
-            method=method,
-        )
+        """Execute JSON request and handle httpx exceptions."""
 
         try:
-            with request.urlopen(http_request, timeout=self.timeout_seconds) as response:
-                raw_response = response.read().decode("utf-8")
-        except error.HTTPError as exc:
+            response = self._client.request(
+                method,
+                path,
+                json=payload,
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
             raise OllamaClientError(
-                _format_http_error("Ollama", exc),
-                status_code=exc.code,
+                _format_http_error("Ollama", exc.response),
+                status_code=exc.response.status_code,
             ) from exc
-        except error.URLError as exc:
-            raise OllamaClientError(f"Could not reach Ollama: {exc.reason}") from exc
-        except TimeoutError as exc:
+        except httpx.TimeoutException as exc:
             raise OllamaClientError("Ollama request timed out") from exc
+        except httpx.RequestError as exc:
+            raise OllamaClientError(f"Could not reach Ollama: {exc}") from exc
 
         try:
-            parsed = json.loads(raw_response)
-        except json.JSONDecodeError as exc:
+            parsed = response.json()
+        except ValueError as exc:
             raise OllamaClientError("Ollama returned invalid JSON") from exc
 
         if not isinstance(parsed, dict):
             raise OllamaClientError("Ollama returned an unexpected response payload")
         return parsed
+
+    def close(self) -> None:
+        """Close the underlying HTTP client."""
+        self._client.close()
 
 
 def _normalize_vector(value: Any, field_name: str) -> list[float]:
@@ -144,21 +149,19 @@ def _normalize_vector(value: Any, field_name: str) -> list[float]:
     return vector
 
 
-def _format_http_error(service_name: str, exc: error.HTTPError) -> str:
+def _format_http_error(service_name: str, response: httpx.Response) -> str:
     try:
-        body = exc.read().decode("utf-8")
-    except Exception:
-        body = ""
+        parsed = response.json()
+    except ValueError:
+        parsed = None
 
-    detail = body.strip()
+    detail = ""
+    if isinstance(parsed, dict) and isinstance(parsed.get("error"), str):
+        detail = parsed["error"].strip()
+    elif response.text:
+       detail = response.text.strip()
+
     if detail:
-        try:
-            parsed = json.loads(detail)
-        except json.JSONDecodeError:
-            pass
-        else:
-            if isinstance(parsed, dict) and isinstance(parsed.get("error"), str):
-                detail = parsed["error"].strip()
-        return f"{service_name} request failed with status {exc.code}: {detail}"
+        return f"{service_name} request failed with status {response.status_code}: {detail}"
 
-    return f"{service_name} request failed with status {exc.code}"
+    return f"{service_name} request failed with status {response.status_code}"

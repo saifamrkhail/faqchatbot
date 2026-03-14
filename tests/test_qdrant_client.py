@@ -97,15 +97,16 @@ def test_upsert_points_sends_all_points(monkeypatch: pytest.MonkeyPatch) -> None
     )
     recorded: dict[str, object] = {}
 
+    import httpx
     def fake_request(
-        self, method: str, path: str, payload: dict[str, object]
-    ) -> dict[str, object]:
+        self, method: str, path: str, **kwargs: object
+    ) -> httpx.Response:
         recorded["method"] = method
         recorded["path"] = path
-        recorded["payload"] = payload
-        return {"status": "ok"}
+        recorded["payload"] = kwargs.get("json")
+        return httpx.Response(200, json={"status": "ok"}, request=httpx.Request(method, path))
 
-    monkeypatch.setattr(QdrantClient, "_request_json", fake_request)
+    monkeypatch.setattr("httpx.Client.request", fake_request)
 
     point = QdrantPoint(id="faq-1", vector=(0.1, 0.2), payload={"question": "Hi"})
     upserted = client.upsert_points([point])

@@ -11,6 +11,9 @@ from app.domain.answer_response import AnswerResponse
 from app.domain.prompt_template import PromptTemplate
 from app.domain.retrieval_result import RetrievalResult
 from app.infrastructure import OllamaClient, OllamaClientError
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AnswerGeneratorError(RuntimeError):
@@ -71,6 +74,13 @@ class AnswerGenerator:
             prompt = self._build_prompt(normalized_question, retrieval.matched_entry)
             answer = self._generate_answer(prompt)
             if not self._is_grounded_answer(answer, retrieval.matched_entry):
+                logger.warning(
+                    "Generated answer failed lexical grounding check. "
+                    "Fallback triggered. "
+                    "Question: %r, Answer: %r",
+                    normalized_question,
+                    answer,
+                )
                 return AnswerResponse(
                     answer=self._get_fallback_answer(),
                     confidence=retrieval.score,
