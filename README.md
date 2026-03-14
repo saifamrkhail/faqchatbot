@@ -1,6 +1,6 @@
 # FAQ Chatbot
 
-A local, terminal-based FAQ RAG chatbot with **Rich** UI, **Ollama** (embeddings & generation), and **Qdrant** (vector store).
+A local, terminal-based FAQ RAG chatbot with plain **Terminal UI**, **Ollama** (embeddings & generation), and **Qdrant** (vector store).
 
 The bot answers questions **only from FAQ context** and returns a deterministic fallback message when confidence is low.
 

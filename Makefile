@@ -25,7 +25,7 @@ help:
 	@echo ""
 	@echo "$(GREEN)Ingestion & Chatbot:$(NC)"
 	@echo "  make ingest          - Load FAQ data into Qdrant"
-	@echo "  make chat            - Run chatbot TUI"
+	@echo "  make chat            - Run chatbot (interactive terminal)"
 	@echo "  make chat-bg         - Run chatbot in background"
 	@echo ""
 	@echo "$(GREEN)Development (Local):$(NC)"
