@@ -27,7 +27,7 @@ services:
       ollama pull nomic-embed-text-v2-moe
 
   qdrant:
-    image: qdrant/qdrant:v1.17.1
+    image: qdrant/qdrant:v1.17.0
     ports:
       - "6333:6333"
     volumes:

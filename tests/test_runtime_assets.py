@@ -27,9 +27,9 @@ def test_docker_compose_wires_bundled_runtime_services() -> None:
     assert "app:" in content
     assert "ingest:" in content
     assert "image: ollama/ollama:0.18.0" in content
-    assert "image: qdrant/qdrant:v1.17.1" in content
-    assert "ollama pull qwen3.5:0.8b" in content
-    assert "ollama pull nomic-embed-text" in content
+    assert "image: qdrant/qdrant:v1.17.0" in content
+    assert "ollama pull qwen3.5:2b" in content
+    assert "ollama pull nomic-embed-text-v2-moe" in content
     assert "condition: service_completed_successfully" in content
     assert "FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333" in content
     assert "FAQ_CHATBOT_OLLAMA_BASE_URL: http://ollama:11434" in content
