@@ -18,29 +18,32 @@ The bot answers questions **only from FAQ context** and returns a deterministic 
 
 ## Setup & Run (Docker) 🐳
 
-### 1. Pull Required Ollama Models
-Before starting, download the models (one-time, ~2-3 GB):
-
+### 1. Start Services
 ```bash
-ollama pull nomic-embed-text-v2-moe
-ollama pull qwen3.5:2b
+make up
 ```
 
-### 2. Start Services
+This starts Ollama, Qdrant, and the app (~30 seconds).
+
+### 2. Pull Ollama Models (in another terminal)
+Models must be pulled **inside** the Ollama container:
+
 ```bash
-docker compose up --build app
+make pull-models
 ```
 
-This starts:
-- **Ollama** on `http://localhost:11434`
-- **Qdrant** on `http://localhost:6333`
-- **App** (ready to ingest)
+This pulls into the container:
+- `nomic-embed-text-v2-moe` (embedding)
+- `qwen3.5:2b` (generation)
 
-Wait for logs showing readiness (~30 seconds).
-
-### 3. Ingest FAQ Data (in another terminal)
+Verify with:
 ```bash
-docker compose run --rm ingest
+make models
+```
+
+### 3. Ingest FAQ Data
+```bash
+make ingest
 ```
 
 Expected output:
@@ -52,7 +55,7 @@ Expected output:
 
 ### 4. Start the Chat
 ```bash
-docker compose up app --tui
+make chat
 ```
 
 Enter questions like:
@@ -61,9 +64,21 @@ Enter questions like:
 
 Press **Ctrl+C** to exit.
 
+### Useful Commands
+```bash
+make logs          # View app logs
+make logs-ollama   # View Ollama logs
+make logs-qdrant   # View Qdrant logs
+make ps            # Show container status
+make down          # Stop all services
+make health        # Check service health
+```
+
 ---
 
 ## Setup & Run (Local Development) 💻
+
+For local development against Docker services:
 
 ### 1. Install Dependencies
 ```bash
@@ -71,57 +86,32 @@ cd faqchatbot-claude
 uv sync
 ```
 
-### 2. Start External Services (Docker)
+### 2. Start Services (Docker)
 ```bash
 docker compose up -d ollama qdrant
 ```
 
-### 3. Pull Ollama Models
+### 3. Pull Models into Ollama Container
 ```bash
-ollama pull nomic-embed-text-v2-moe
-ollama pull qwen3.5:2b
-
-# Verify
-ollama list
+docker compose exec ollama ollama pull nomic-embed-text-v2-moe
+docker compose exec ollama ollama pull qwen3.5:2b
 ```
 
-### 4. Ingest FAQ Data
+### 4. Ingest FAQ Data Locally
 ```bash
-make ingest
-```
-
-or
-
-```bash
-uv run python scripts/ingest.py --faq-file data/faq.json --verbose
-```
-
-Expected output:
-```
-✓ Loaded 10 FAQ entries
-✓ Generated 10 embeddings
-✓ Stored vectors in Qdrant
-Ingestion complete: 10 entries, 0 errors
+make ingest-local
 ```
 
 ### 5. Run Tests
 ```bash
 make test
-# or
-uv run pytest -v
 ```
 
 Result: **147 passed, 0 skipped** ✓
 
-### 6. Start the Chat
+### 6. Start the Chat Locally
 ```bash
-# Terminal UI mode
-make chat
-# or
-uv run faqchatbot --tui
-
-# Status-only mode
-uv run faqchatbot
+make run-local
 ```
 
 ---
@@ -130,10 +120,12 @@ uv run faqchatbot
 
 | Problem | Solution |
 |---------|----------|
-| **Model not found (404)** | Run `ollama pull nomic-embed-text-v2-moe && ollama pull qwen3.5:2b` |
-| **Qdrant connection refused** | Ensure services running: `docker compose up -d` |
-| **Ingest fails with timeout** | Check service health: `docker compose logs ollama` |
-| **Tests fail** | Reset deps: `uv sync --force` |
+| **Model not found (404)** | Pull into container: `make pull-models` |
+| **Qdrant connection refused** | Start services: `make up` |
+| **Ingest fails with timeout** | Check logs: `make logs-ollama` |
+| **Check available models** | `make models` |
+| **Tests fail locally** | Reset deps: `uv sync --force` |
+| **Need shell in Ollama container** | `make shell-ollama` |
 
 ---
 

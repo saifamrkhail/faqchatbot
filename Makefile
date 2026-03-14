@@ -15,6 +15,7 @@ help:
 	@echo ""
 	@echo "$(GREEN)Docker Commands:$(NC)"
 	@echo "  make up              - Start all services (Ollama, Qdrant, App)"
+	@echo "  make pull-models     - Pull Ollama models into container"
 	@echo "  make down            - Stop all services"
 	@echo "  make logs            - View app logs (live)"
 	@echo "  make logs-ollama     - View Ollama logs"
@@ -78,6 +79,13 @@ rebuild:
 # ============================================================================
 # Ingestion & Chat
 # ============================================================================
+
+pull-models:
+	@echo "$(CYAN)Pulling Ollama models into container...$(NC)"
+	docker compose exec ollama ollama pull nomic-embed-text-v2-moe
+	docker compose exec ollama ollama pull qwen3.5:2b
+	@echo "$(GREEN)Models pulled successfully$(NC)"
+	@make models
 
 ingest:
 	@echo "$(CYAN)Ingesting FAQ data...$(NC)"
