@@ -20,6 +20,7 @@ class FAQEntry:
     tags: tuple[str, ...] = ()
     category: str | None = None
     source: str | None = None
+    alt_questions: tuple[str, ...] = ()
 
     @classmethod
     def from_dict(
@@ -43,6 +44,9 @@ class FAQEntry:
         source = _normalize_optional_string(
             raw.get("source"), "source", record_index=record_index
         )
+        alt_questions = _normalize_alt_questions(
+            raw.get("alt_questions"), record_index=record_index
+        )
         return cls(
             id=entry_id,
             question=question,
@@ -50,6 +54,7 @@ class FAQEntry:
             tags=tags,
             category=category,
             source=source,
+            alt_questions=alt_questions,
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -65,6 +70,8 @@ class FAQEntry:
             payload["category"] = self.category
         if self.source is not None:
             payload["source"] = self.source
+        if self.alt_questions:
+            payload["alt_questions"] = list(self.alt_questions)
         return payload
 
 
@@ -140,6 +147,26 @@ def _normalize_tags(value: Any, *, record_index: int | None) -> tuple[str, ...]:
             )
         normalized_tags.append(stripped)
     return tuple(normalized_tags)
+
+
+def _normalize_alt_questions(value: Any, *, record_index: int | None) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise FAQValidationError(
+            f"{_record_label(record_index)} field 'alt_questions' must be a list of strings"
+        )
+
+    normalized: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            raise FAQValidationError(
+                f"{_record_label(record_index)} field 'alt_questions' must contain only strings"
+            )
+        stripped = item.strip()
+        if stripped:
+            normalized.append(stripped)
+    return tuple(normalized)
 
 
 def _record_label(record_index: int | None) -> str:

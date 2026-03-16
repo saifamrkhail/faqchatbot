@@ -18,3 +18,4 @@ class ChatResponse:
     confidence: float         # Retrieval score 0.0-1.0
     source_faq_id: str | None # FAQ entry used, None if fallback
     used_retrieval: bool      # True if answer came from FAQ
+    thinking: str | None = None # Optional model thinking trace

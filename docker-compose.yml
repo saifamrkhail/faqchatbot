@@ -24,7 +24,7 @@ services:
         condition: service_healthy
     entrypoint: ["/bin/sh", "-c"]
     command: >
-      ollama pull qwen3.5:2b &&
+      ollama pull qwen3.5:9b &&
       ollama pull nomic-embed-text-v2-moe
 
   qdrant:
@@ -50,10 +50,13 @@ services:
       FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
       FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333
       FAQ_CHATBOT_OLLAMA_BASE_URL: http://ollama:11434
-      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:2b
+      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:9b
       FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text-v2-moe
+      FAQ_CHATBOT_OLLAMA_TIMEOUT_SECONDS: "120"
+      FAQ_CHATBOT_OLLAMA_GENERATE_MAX_TOKENS: "512"
+      FAQ_CHATBOT_OLLAMA_ENABLE_THINKING: "false"
       FAQ_CHATBOT_TOP_K: "3"
-      FAQ_CHATBOT_SCORE_THRESHOLD: "0.70"
+      FAQ_CHATBOT_SCORE_THRESHOLD: "0.50"
       FAQ_CHATBOT_FALLBACK_MESSAGE: Leider konnte ich Ihre Frage nicht verstehen.
     depends_on:
       ollama-models:
@@ -74,7 +77,7 @@ services:
       FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
       FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333
       FAQ_CHATBOT_OLLAMA_BASE_URL: http://ollama:11434
-      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:2b
+      FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:9b
       FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text-v2-moe
       FAQ_CHATBOT_QDRANT_COLLECTION_NAME: faq_entries
     depends_on:
@@ -85,8 +88,6 @@ services:
       qdrant:
         condition: service_healthy
     command: ["python", "-m", "scripts.ingest"]
-    profiles:
-      - tooling
 
 volumes:
   ollama_data:

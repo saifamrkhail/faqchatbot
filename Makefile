@@ -11,10 +11,22 @@ NC := \033[0m # No Color
 
 # Help target
 help:
-	@echo "$(CYAN)FAQ Chatbot - Available Commands$(NC)"
+	@echo "$(CYAN)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(CYAN)  FAQ Chatbot - Quick Start$(NC)"
+	@echo "$(CYAN)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Terminal 1:$(NC)"
+	@echo "  $$ make up              # Start Ollama, Qdrant, App"
+	@echo ""
+	@echo "$(YELLOW)Terminal 2:$(NC)"
+	@echo "  $$ make pull-models     # Download AI models (~3 min)"
+	@echo "  $$ make ingest          # Load FAQ data"
+	@echo "  $$ make chat            # Start chatting!"
 	@echo ""
 	@echo "$(GREEN)Docker Commands:$(NC)"
-	@echo "  make up              - Start all services (Ollama, Qdrant, App)"
+	@echo "  make up              - Start services (Ollama, Qdrant) in background"
+	@echo "  make up-all          - Start services + app logs (logs only, no input)"
+	@echo "  make pull-models     - Pull Ollama models into container"
 	@echo "  make down            - Stop all services"
 	@echo "  make logs            - View app logs (live)"
 	@echo "  make logs-ollama     - View Ollama logs"
@@ -24,7 +36,7 @@ help:
 	@echo ""
 	@echo "$(GREEN)Ingestion & Chatbot:$(NC)"
 	@echo "  make ingest          - Load FAQ data into Qdrant"
-	@echo "  make chat            - Run chatbot TUI"
+	@echo "  make chat            - Run chatbot (interactive terminal)"
 	@echo "  make chat-bg         - Run chatbot in background"
 	@echo ""
 	@echo "$(GREEN)Development (Local):$(NC)"
@@ -48,7 +60,12 @@ build:
 	docker compose build
 
 up:
-	@echo "$(CYAN)Starting all services...$(NC)"
+	@echo "$(CYAN)Starting services (Ollama, Qdrant)...$(NC)"
+	@echo "$(YELLOW)Run 'make pull-models' in another terminal$(NC)"
+	docker compose up -d ollama qdrant
+
+up-all:
+	@echo "$(CYAN)Starting all services (Ollama, Qdrant, App logs)...$(NC)"
 	docker compose up --build app
 
 up-bg:
@@ -79,13 +96,20 @@ rebuild:
 # Ingestion & Chat
 # ============================================================================
 
+pull-models:
+	@echo "$(CYAN)Pulling Ollama models into container...$(NC)"
+	docker compose exec ollama ollama pull nomic-embed-text-v2-moe
+	docker compose exec ollama ollama pull qwen3.5:9b
+	@echo "$(GREEN)Models pulled successfully$(NC)"
+	@make models
+
 ingest:
 	@echo "$(CYAN)Ingesting FAQ data...$(NC)"
-	docker compose run --rm ingest
+	docker compose run --rm --build ingest
 
 chat:
 	@echo "$(CYAN)Starting chatbot...$(NC)"
-	docker compose up app
+	docker compose run --rm --build app
 
 chat-bg:
 	@echo "$(CYAN)Starting chatbot in background...$(NC)"
@@ -102,6 +126,22 @@ sync:
 test:
 	@echo "$(CYAN)Running tests...$(NC)"
 	uv run pytest -v
+
+eval:
+	@echo "$(CYAN)Running chatbot evaluation against live services...$(NC)"
+	uv run python -m tests.evaluation.runner -v
+
+eval-category:
+	@echo "$(CYAN)Running evaluation for category: $(CAT)$(NC)"
+	uv run python -m tests.evaluation.runner -v --category $(CAT)
+
+grid-search:
+	@echo "$(CYAN)Running parameter grid search (quick)...$(NC)"
+	uv run python -m tests.evaluation.grid_search --quick
+
+grid-search-full:
+	@echo "$(CYAN)Running full parameter grid search...$(NC)"
+	uv run python -m tests.evaluation.grid_search
 
 test-watch:
 	@echo "$(CYAN)Running tests in watch mode...$(NC)"

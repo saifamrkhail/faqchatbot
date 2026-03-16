@@ -1,8 +1,8 @@
-"""Tests for Phase 8 – Terminal UI (Module 08)."""
+"""Tests for Terminal UI (Module 08)."""
 
 from __future__ import annotations
 
-import asyncio
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -14,15 +14,11 @@ from app.ui.protocol import (
     StubChatService,
 )
 
-try:
-    import textual  # noqa: F401
-except ModuleNotFoundError:
-    textual = None
-
 
 # ---------------------------------------------------------------------------
 # ChatResponse tests
 # ---------------------------------------------------------------------------
+
 
 class TestChatResponse:
     def test_construct_with_defaults(self) -> None:
@@ -30,12 +26,19 @@ class TestChatResponse:
         assert resp.answer == "Hello"
         assert resp.source_faq is None
         assert resp.is_fallback is False
+        assert resp.thinking is None
 
     def test_construct_with_all_fields(self) -> None:
-        resp = ChatResponse(answer="A", source_faq="faq-01", is_fallback=True)
+        resp = ChatResponse(
+            answer="A",
+            source_faq="faq-01",
+            is_fallback=True,
+            thinking="Check FAQ context.",
+        )
         assert resp.answer == "A"
         assert resp.source_faq == "faq-01"
         assert resp.is_fallback is True
+        assert resp.thinking == "Check FAQ context."
 
     def test_is_frozen(self) -> None:
         resp = ChatResponse(answer="X")
@@ -47,18 +50,24 @@ class TestChatResponse:
 # StubChatService tests
 # ---------------------------------------------------------------------------
 
+
 class TestStubChatService:
     def test_satisfies_protocol(self) -> None:
         assert isinstance(StubChatService(), ChatServiceProtocol)
 
-    @pytest.mark.asyncio
-    async def test_ask_returns_chat_response(self) -> None:
+    def test_ask_returns_chat_response(self) -> None:
         service = StubChatService()
-        resp = await service.ask("What is this?")
+        with patch("app.ui.protocol.time.sleep"):
+            resp = service.ask("What is this?")
         assert isinstance(resp, ChatResponse)
         assert resp.is_fallback is True
         assert resp.source_faq is None
         assert len(resp.answer) > 0
+
+
+# ---------------------------------------------------------------------------
+# ChatServiceAdapter tests
+# ---------------------------------------------------------------------------
 
 
 class TestChatServiceAdapter:
@@ -72,14 +81,12 @@ class TestChatServiceAdapter:
                     confidence=0.9,
                     source_faq_id="faq-01",
                     used_retrieval=True,
+                    thinking="Ich prüfe die FAQ.",
                 )
 
         assert isinstance(ChatServiceAdapter(CoreService()), ChatServiceProtocol)
 
-    @pytest.mark.asyncio
-    async def test_maps_domain_response_to_ui_response(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_maps_domain_response_to_ui_response(self) -> None:
         class CoreService:
             def handle_question(self, question: str) -> DomainChatResponse:
                 return DomainChatResponse(
@@ -89,134 +96,114 @@ class TestChatServiceAdapter:
                     confidence=0.9,
                     source_faq_id="faq-01",
                     used_retrieval=True,
+                    thinking="Ich prüfe die FAQ.",
                 )
 
-        async def run_inline(func, *args):
-            return func(*args)
-
-        monkeypatch.setattr("app.ui.protocol.asyncio.to_thread", run_inline)
-
-        response = await ChatServiceAdapter(CoreService()).ask("Frage")
+        response = ChatServiceAdapter(CoreService()).ask("Frage")
 
         assert response.answer == "Antwort"
         assert response.source_faq == "faq-01"
         assert response.is_fallback is False
+        assert response.thinking == "Ich prüfe die FAQ."
 
 
 # ---------------------------------------------------------------------------
-# Widget unit tests (no full app mount required)
+# Chat loop tests
 # ---------------------------------------------------------------------------
 
-@pytest.mark.skipif(textual is None, reason="textual is not installed")
-class TestWidgetImports:
-    """Verify all widgets can be imported without errors."""
 
-    def test_import_message_bubble(self) -> None:
-        from app.ui.widgets import MessageBubble
-        assert MessageBubble is not None
+class TestRunChatLoop:
+    def _make_service(self, answer: str = "Antwort") -> MagicMock:
+        service = MagicMock(spec=ChatServiceProtocol)
+        service.ask.return_value = ChatResponse(answer=answer)
+        return service
 
-    def test_import_chat_log(self) -> None:
-        from app.ui.widgets import ChatLog
-        assert ChatLog is not None
+    def test_exits_on_eof(self) -> None:
+        service = self._make_service()
+        with patch("builtins.input", side_effect=EOFError()), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        assert mock_print.called
 
-    def test_import_status_indicator(self) -> None:
-        from app.ui.widgets import StatusIndicator
-        assert StatusIndicator is not None
+    def test_exits_on_keyboard_interrupt(self) -> None:
+        service = self._make_service()
+        with patch("builtins.input", side_effect=KeyboardInterrupt()), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        assert mock_print.called
 
-    def test_import_chat_input(self) -> None:
-        from app.ui.widgets import ChatInput
-        assert ChatInput is not None
+    def test_exits_on_exit_command(self) -> None:
+        service = self._make_service()
+        with patch("builtins.input", side_effect=["exit"]), \
+             patch("builtins.print"):
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        service.ask.assert_not_called()
 
+    def test_skips_empty_questions(self) -> None:
+        service = self._make_service()
+        with patch("builtins.input", side_effect=["", "  ", EOFError()]), \
+             patch("builtins.print"):
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        service.ask.assert_not_called()
 
-# ---------------------------------------------------------------------------
-# FAQChatApp integration tests (Textual pilot)
-# ---------------------------------------------------------------------------
+    def test_calls_service_with_valid_question(self) -> None:
+        service = self._make_service()
+        with patch("builtins.input", side_effect=["Was kostet Support?", EOFError()]), \
+             patch("builtins.print"):
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        service.ask.assert_called_once_with("Was kostet Support?")
 
-@pytest.mark.skipif(textual is None, reason="textual is not installed")
-class TestFAQChatApp:
-    @pytest.mark.asyncio
-    async def test_app_mounts_and_has_expected_widgets(self) -> None:
-        from app.ui.chat_app import FAQChatApp
-        from app.ui.widgets import ChatInput, ChatLog, StatusIndicator
+    def test_prints_answer(self) -> None:
+        service = self._make_service(answer="Ja, wir bieten Support an.")
+        with patch("builtins.input", side_effect=["Frage?", EOFError()]), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        printed = " ".join(str(c) for c in mock_print.call_args_list)
+        assert "Ja, wir bieten Support an." in printed
 
-        app = FAQChatApp()
-        async with app.run_test() as pilot:
-            assert app.query_one("#chat-log", ChatLog)
-            assert app.query_one("#status-indicator", StatusIndicator)
-            assert app.query_one("#input-area", ChatInput)
+    def test_prints_thinking_trace_when_available(self) -> None:
+        service = MagicMock(spec=ChatServiceProtocol)
+        service.ask.return_value = ChatResponse(
+            answer="Ja, wir bieten Support an.",
+            thinking="Ich prüfe die Services-FAQ.",
+        )
+        with patch("builtins.input", side_effect=["Frage?", EOFError()]), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        printed = " ".join(str(c) for c in mock_print.call_args_list)
+        assert "Qwen denkt:" in printed
+        assert "Ich prüfe die Services-FAQ." in printed
 
-    @pytest.mark.asyncio
-    async def test_welcome_message_displayed(self) -> None:
-        from app.ui.chat_app import FAQChatApp
+    def test_prints_error_on_service_exception(self) -> None:
+        service = MagicMock(spec=ChatServiceProtocol)
+        service.ask.side_effect = RuntimeError("Verbindung fehlgeschlagen")
+        with patch("builtins.input", side_effect=["Hilfe!", EOFError()]), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        printed = " ".join(str(c) for c in mock_print.call_args_list)
+        assert "Verbindung fehlgeschlagen" in printed
 
-        app = FAQChatApp()
-        async with app.run_test() as pilot:
-            welcome = app.query_one("#welcome")
-            assert "Willkommen" in welcome.render().plain
+    def test_title_in_header(self) -> None:
+        service = self._make_service()
+        with patch("builtins.input", side_effect=EOFError()), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="MeinBot")
+        printed = " ".join(str(c) for c in mock_print.call_args_list)
+        assert "MeinBot" in printed
 
-    @pytest.mark.asyncio
-    async def test_submit_question_shows_response(self) -> None:
-        from app.ui.chat_app import FAQChatApp
-        from app.ui.widgets import ChatLog
-
-        # Use a fast stub that returns immediately.
-        class FastStub:
-            async def ask(self, question: str) -> ChatResponse:
-                return ChatResponse(answer="Test-Antwort", is_fallback=False)
-
-        app = FAQChatApp(chat_service=FastStub())
-        async with app.run_test() as pilot:
-            # Type a question and submit.
-            await pilot.click("#chat-input")
-            await pilot.press("T", "e", "s", "t")
-            await pilot.press("enter")
-            await pilot.pause()
-
-            chat_log = app.query_one("#chat-log", ChatLog)
-            rendered = chat_log.render().plain if hasattr(chat_log.render(), 'plain') else str(chat_log.render())
-            # Verify that both the user question and the answer appeared
-            bubbles = chat_log.query("MessageBubble")
-            assert len(bubbles) >= 2  # user message + assistant response
-
-    @pytest.mark.asyncio
-    async def test_empty_input_does_not_submit(self) -> None:
-        from app.ui.chat_app import FAQChatApp
-        from app.ui.widgets import ChatLog
-
-        app = FAQChatApp()
-        async with app.run_test() as pilot:
-            # Press enter on empty input.
-            await pilot.click("#chat-input")
-            await pilot.press("enter")
-            await pilot.pause()
-
-            chat_log = app.query_one("#chat-log", ChatLog)
-            bubbles = chat_log.query("MessageBubble")
-            assert len(bubbles) == 0  # no message added
-
-    @pytest.mark.asyncio
-    async def test_custom_title_applied(self) -> None:
-        from app.ui.chat_app import FAQChatApp
-
-        app = FAQChatApp(title="MyBot")
-        async with app.run_test() as pilot:
-            assert app.title == "MyBot"
-
-    @pytest.mark.asyncio
-    async def test_error_handling_shows_status(self) -> None:
-        from app.ui.chat_app import FAQChatApp
-        from app.ui.widgets import StatusIndicator
-
-        class FailingService:
-            async def ask(self, question: str) -> ChatResponse:
-                raise RuntimeError("Service unavailable")
-
-        app = FAQChatApp(chat_service=FailingService())
-        async with app.run_test() as pilot:
-            await pilot.click("#chat-input")
-            await pilot.press("H", "i")
-            await pilot.press("enter")
-            await pilot.pause()
-
-            status = app.query_one("#status-indicator", StatusIndicator)
-            assert status.has_class("error")
+    def test_strips_whitespace_from_input(self) -> None:
+        service = self._make_service()
+        with patch("builtins.input", side_effect=["  Frage mit Spaces  ", EOFError()]), \
+             patch("builtins.print"):
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        service.ask.assert_called_once_with("Frage mit Spaces")

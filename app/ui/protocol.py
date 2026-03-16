@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
+import time
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import Iterator, Protocol, runtime_checkable
 
 from app.domain import ChatResponse as DomainChatResponse
 from app.services import ChatService
@@ -17,53 +17,50 @@ class ChatResponse:
     answer: str
     source_faq: str | None = None
     is_fallback: bool = False
+    thinking: str | None = None
 
 
 @runtime_checkable
 class ChatServiceProtocol(Protocol):
-    """Contract that the UI expects from any chat backend.
+    """Minimal contract used by the terminal chat loop."""
 
-    The UI stays decoupled from the concrete chat pipeline by relying on a
-    small async protocol.
-    """
-
-    async def ask(self, question: str) -> ChatResponse: ...
+    def ask(self, question: str) -> ChatResponse: ...
 
 
 @dataclass(slots=True)
 class ChatServiceAdapter:
-    """Bridge the sync core service into the async Textual event loop."""
+    """Bridge the core chat service to the smaller terminal-UI response shape."""
 
     chat_service: ChatService
 
-    async def ask(self, question: str) -> ChatResponse:
-        """Run the blocking chat pipeline off the UI thread."""
+    def ask(self, question: str) -> ChatResponse:
+        """Run one synchronous chat turn and map it for the UI layer."""
 
-        response = await asyncio.to_thread(self.chat_service.handle_question, question)
+        response = self.chat_service.handle_question(question)
         return _to_ui_response(response)
+
+    def ask_streaming(self, question: str) -> Iterator[str]:
+        """Stream answer tokens from the core chat service."""
+
+        yield from self.chat_service.handle_question_streaming(question)
 
 
 class StubChatService:
-    """Canned chat service for standalone UI testing and development.
-
-    Returns a fixed German-language stub response after a short simulated
-    delay so the loading indicator can be exercised.
-    """
+    """Canned chat service for standalone UI testing and development."""
 
     _STUB_ANSWER = (
         "Dies ist eine Platzhalter-Antwort. "
-        "Der vollständige Chat-Service (Modul 07) ist noch nicht angebunden."
+        "Der vollständige Chat-Service ist noch nicht angebunden."
     )
     _SIMULATED_DELAY_SECONDS = 0.8
 
-    async def ask(self, question: str) -> ChatResponse:
-        """Return a stub response after a brief simulated delay."""
-
-        await asyncio.sleep(self._SIMULATED_DELAY_SECONDS)
+    def ask(self, question: str) -> ChatResponse:
+        time.sleep(self._SIMULATED_DELAY_SECONDS)
         return ChatResponse(
             answer=self._STUB_ANSWER,
             source_faq=None,
             is_fallback=True,
+            thinking=None,
         )
 
 
@@ -74,4 +71,5 @@ def _to_ui_response(response: DomainChatResponse) -> ChatResponse:
         answer=response.answer,
         source_faq=response.source_faq_id,
         is_fallback=response.is_fallback,
+        thinking=response.thinking,
     )

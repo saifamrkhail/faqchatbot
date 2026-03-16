@@ -65,6 +65,7 @@ Wichtige Runtime-Variablen:
 - `FAQ_CHATBOT_OLLAMA_BASE_URL`
 - `FAQ_CHATBOT_OLLAMA_GENERATE_MODEL`
 - `FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL`
+- `FAQ_CHATBOT_OLLAMA_ENABLE_THINKING`
 - `FAQ_CHATBOT_TOP_K`
 - `FAQ_CHATBOT_SCORE_THRESHOLD`
 - `FAQ_CHATBOT_FALLBACK_MESSAGE`
@@ -75,4 +76,4 @@ Wichtige Runtime-Variablen:
 - Embedding-Modell für Ingestion und Query muss identisch sein.
 - Bei Retrieval unterhalb Threshold liefert der Bot deterministisch die Fallback-Antwort.
 - Im Compose-Stack laufen Ollama `0.18.0` und Qdrant `1.17.1` containerisiert.
-- Der Service `ollama-models` zieht vor App/Ingestion die benoetigten Modelle `qwen3.5:2b` und `nomic-embed-text-v2-moe`.
+- Der Service `ollama-models` zieht vor App/Ingestion die benoetigten Modelle `qwen3.5:9b` und `nomic-embed-text-v2-moe`.

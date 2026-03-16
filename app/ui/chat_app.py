@@ -1,94 +1,50 @@
-"""Textual application shell for the FAQ chatbot."""
+"""Terminal chat loop."""
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from textual.app import App, ComposeResult
-from textual.binding import Binding
-from textual.widgets import Footer, Header, Static
+if TYPE_CHECKING:
+    from app.ui.protocol import ChatServiceProtocol
 
-from app.ui.protocol import ChatResponse, ChatServiceProtocol, StubChatService
-from app.ui.widgets import ChatInput, ChatLog, StatusIndicator
+_SEP = "─" * 60
 
 
-_CSS_PATH = Path(__file__).parent / "styles.tcss"
+def run_chat_loop(chat_service: ChatServiceProtocol, *, title: str = "faqchatbot") -> None:
+    """Run the blocking terminal chat loop used by the CLI ``--tui`` mode."""
 
+    print(f"\n{_SEP}")
+    print(f"  {title}  |  'exit' oder Ctrl+C zum Beenden")
+    print(_SEP)
+    print("Willkommen! Stelle eine Frage zu unseren FAQ.\n")
 
-class FAQChatApp(App):
-    """Terminal UI for the FAQ chatbot.
+    while True:
+        try:
+            question = input("Sie: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nTschüss!")
+            break
 
-    Delegates all business logic to a ``ChatServiceProtocol`` implementation
-    injected at construction time.
-    """
+        if not question:
+            continue
 
-    TITLE = "FAQ Chatbot"
-    SUB_TITLE = "Stelle eine Frage"
-    CSS_PATH = _CSS_PATH
-
-    BINDINGS = [
-        Binding("ctrl+q", "quit", "Beenden", show=True),
-        Binding("ctrl+c", "quit", "Beenden", show=False),
-    ]
-
-    def __init__(
-        self,
-        chat_service: ChatServiceProtocol | None = None,
-        *,
-        title: str | None = None,
-        **kwargs,
-    ) -> None:
-        super().__init__(**kwargs)
-        self._chat_service: ChatServiceProtocol = chat_service or StubChatService()
-        if title:
-            self.title = title
-
-    def compose(self) -> ComposeResult:
-        """Build the fixed shell: header, transcript, status, input, footer."""
-
-        yield Header()
-        yield ChatLog(id="chat-log")
-        yield StatusIndicator(id="status-indicator")
-        yield ChatInput(id="input-area")
-        yield Footer()
-
-    def on_mount(self) -> None:
-        """Seed the chat log with the initial prompt and focus the input."""
-
-        chat_log = self.query_one("#chat-log", ChatLog)
-        chat_log.mount(
-            Static(
-                "Willkommen! Stelle eine Frage zu unseren FAQ.",
-                id="welcome",
-            )
-        )
-        self.query_one("#input-area", ChatInput).focus_input()
-
-    async def on_chat_input_submitted(self, event: ChatInput.Submitted) -> None:
-        """Push one user question through the backend and update UI state."""
-
-        question = event.question
-        chat_log = self.query_one("#chat-log", ChatLog)
-        status = self.query_one("#status-indicator", StatusIndicator)
-        input_area = self.query_one("#input-area", ChatInput)
-
-        # Remove the welcome message on first interaction.
-        welcome = self.query("#welcome")
-        for widget in welcome:
-            await widget.remove()
-
-        chat_log.append_message(question, role="user")
-
-        input_area.disable()
-        status.show_thinking()
+        if question.lower() in {"exit", "quit", "bye"}:
+            print("Tschüss!")
+            break
 
         try:
-            response: ChatResponse = await self._chat_service.ask(question)
-            chat_log.append_message(response.answer, role="assistant")
+            if hasattr(chat_service, "ask_streaming"):
+                print("Bot: ", end="", flush=True)
+                for token in chat_service.ask_streaming(question):
+                    print(token, end="", flush=True)
+                print("\n")
+            else:
+                print("...")
+                response = chat_service.ask(question)
+                if response.thinking:
+                    print("Qwen denkt:")
+                    print(response.thinking)
+                    print()
+                print(f"Bot: {response.answer}\n")
         except Exception as exc:  # noqa: BLE001
-            status.show_error(f"Fehler: {exc}")
-        else:
-            status.clear()
-        finally:
-            input_area.enable()
-            input_area.focus_input()
+            print(f"\nFehler: {exc}\n")

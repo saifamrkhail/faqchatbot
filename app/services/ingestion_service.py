@@ -34,7 +34,7 @@ class IngestionResult:
 
 @dataclass(slots=True)
 class IngestionService:
-    """Offline write path from validated FAQ data into the vector store."""
+    """Offline write path from FAQ data into the vector store."""
 
     repository: FAQRepository
     ollama_client: OllamaClient
@@ -108,9 +108,12 @@ class IngestionService:
         return points
 
     def _build_embedding_text(self, entry: FAQEntry) -> str:
-        """Compose the FAQ text that should drive semantic retrieval."""
+        """Compose the text used to embed an FAQ, including alternate phrasings."""
 
-        parts = [entry.question, entry.answer]
+        parts = [entry.question]
+        if entry.alt_questions:
+            parts.extend(entry.alt_questions)
+        parts.append(entry.answer)
         if entry.category:
             parts.append(f"Category: {entry.category}")
         if entry.tags:

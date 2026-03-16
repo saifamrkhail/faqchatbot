@@ -162,6 +162,39 @@ def test_search_falls_back_to_legacy_endpoint(monkeypatch: pytest.MonkeyPatch) -
     ]
 
 
+def test_search_supports_query_endpoint_points_wrapper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = QdrantClient(
+        base_url="http://qdrant.local",
+        collection_name="faq_entries",
+        timeout_seconds=30.0,
+    )
+
+    def fake_request(
+        self, method: str, path: str, payload: dict[str, object]
+    ) -> dict[str, object]:
+        assert path == "/collections/faq_entries/points/query"
+        return {
+            "result": {
+                "points": [
+                    {
+                        "id": "faq-1",
+                        "score": 0.91,
+                        "payload": {"question": "Welche Dienstleistungen?"},
+                    }
+                ]
+            }
+        }
+
+    monkeypatch.setattr(QdrantClient, "_request_json", fake_request)
+
+    results = client.search([0.1, 0.2], limit=1)
+
+    assert [result.id for result in results] == ["faq-1"]
+    assert results[0].score == pytest.approx(0.91)
+
+
 def test_search_supports_missing_payload_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     client = QdrantClient(
         base_url="http://qdrant.local",

@@ -1,0 +1,129 @@
+========================================================================
+FAQ CHATBOT EVALUATION REPORT
+Timestamp : 2026-03-16 12:37:21
+Model     : qwen3.5:2b
+Embedding : nomic-embed-text-v2-moe
+top_k     : 3
+threshold : 0.7
+temp      : 0.1
+max_tokens: 512
+========================================================================
+
+SUMMARY BY CATEGORY
+------------------------------------------------------------------------
+  faq_direct             10/10 (100.0%)  avg_score=0.89  avg_latency=55.1s
+  faq_paraphrase          6/13 ( 46.2%)  avg_score=0.69  avg_latency=20.8s
+  company_offtopic        7/ 7 (100.0%)  avg_score=0.31  avg_latency=1.0s
+  hallucination           5/ 5 (100.0%)  avg_score=0.46  avg_latency=0.7s
+  general_chat            6/ 7 ( 85.7%)  avg_score=0.23  avg_latency=19.9s
+  boundary                6/ 6 (100.0%)  avg_score=0.59  avg_latency=2.3s
+------------------------------------------------------------------------
+  TOTAL                  40/48 (83.3%)
+
+Latency: min=0.3s  max=108.8s  avg=20.5s
+
+FAILURES (8)
+------------------------------------------------------------------------
+
+  [faq_paraphrase] FAQ #1 – 'Services' instead of 'Dienstleistungen'
+  Q: Welche Services bietet Ihre Firma an?
+  score=0.66  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #2 – support options rephrased
+  Q: Wie kann ich Hilfe bekommen, wenn mein System nicht funktioniert?
+  score=0.55  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #3 – security rephrased
+  Q: Was tun Sie gegen Hackerangriffe?
+  score=0.55  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #6 – availability rephrased
+  Q: Wie stellen Sie sicher, dass meine IT nicht ausfällt?
+  score=0.61  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #9 – industries rephrased
+  Q: Für welche Unternehmen und Branchen arbeiten Sie?
+  score=0.68  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #10 – pricing rephrased
+  Q: Was kostet es, Ihre Dienste zu nutzen?
+  score=0.59  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #4 – specific cloud providers from answer text
+  Q: Arbeiten Sie mit AWS oder Azure?
+  score=0.62  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [general_chat] Small talk – how are you
+  Q: Wie geht es Ihnen?
+  score=0.25  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+ALL RESULTS
+------------------------------------------------------------------------
+  # Cat                Score Ret  FB Halu    ms  Description / Answer
+------------------------------------------------------------------------
+  1 faq_direct          0.92 YES NO  OK   102756  FAQ #1 verbatim: Wir bieten eine breite Palette von IT-Dienstleistungen an, d
+  2 faq_direct          0.86 YES NO  OK   45840  FAQ #2 verbatim: Wir bieten verschiedene Support-Optionen an, einschließlich 
+  3 faq_direct          0.85 YES NO  OK   55287  FAQ #3 verbatim: Wir verwenden eine Kombination aus modernsten Cybersicherhei
+  4 faq_direct          0.94 YES NO  OK   46850  FAQ #4 verbatim: Ja, wir bieten umfassende Cloud-Migrationsdienste an, die al
+  5 faq_direct          0.90 YES NO  OK   51517  FAQ #5 verbatim: Wir helfen Ihnen, die relevanten Datenschutzvorschriften wie
+  6 faq_direct          0.92 YES NO  OK   53670  FAQ #6 verbatim: Wir implementieren Redundanzlösungen, regelmäßige Backups, M
+  7 faq_direct          0.93 YES NO  OK   108842  FAQ #7 verbatim: Ja, wir bieten maßgeschneiderte Softwareentwicklungsdienste 
+  8 faq_direct          0.91 YES NO  OK   36644  FAQ #8 verbatim: Eine typische IT-Beratung beginnt mit einer umfassenden Anal
+  9 faq_direct          0.83 YES NO  OK   16258  FAQ #9 verbatim: Wir bedienen eine Vielzahl von Branchen, darunter Gesundheit
+ 10 faq_direct          0.86 YES NO  OK   32898  FAQ #10 verbatim: Die Kosten unserer Dienstleistungen variieren je nach Umfang
+ 11 faq_paraphrase      0.78 YES NO  OK   24610  FAQ #1 – short paraphrase: Wir bieten eine breite Palette von IT-Dienstleistungen an, d
+ 12 faq_paraphrase      0.66 NO  YES OK     444  FAQ #1 – 'Services' instead of: Leider konnte ich Ihre Frage nicht verstehen.
+ 13 faq_paraphrase      0.55 NO  YES OK     311  FAQ #2 – support options rephr: Leider konnte ich Ihre Frage nicht verstehen.
+ 14 faq_paraphrase      0.55 NO  YES OK     285  FAQ #3 – security rephrased: Leider konnte ich Ihre Frage nicht verstehen.
+ 15 faq_paraphrase      0.77 YES NO  OK   21110  FAQ #4 – cloud migration rephr: Ja, wir bieten umfassende Cloud-Migrationsdienste an, die al
+ 16 faq_paraphrase      0.84 YES NO  OK   37264  FAQ #5 – DSGVO short form: Ja, wir unterstützen Sie bei der DSGVO-Compliance. Wir helfe
+ 17 faq_paraphrase      0.61 NO  YES OK    4509  FAQ #6 – availability rephrase: Leider konnte ich Ihre Frage nicht verstehen.
+ 18 faq_paraphrase      0.75 YES NO  OK   44596  FAQ #7 – custom software rephr: Ja, wir bieten maßgeschneiderte Softwareentwicklungsdienste 
+ 19 faq_paraphrase      0.74 YES NO  OK   68020  FAQ #8 – consulting rephrased: Eine IT-Beratung beginnt mit einer umfassenden Analyse Ihrer
+ 20 faq_paraphrase      0.68 NO  YES OK    1245  FAQ #9 – industries rephrased: Leider konnte ich Ihre Frage nicht verstehen.
+ 21 faq_paraphrase      0.59 NO  YES OK    4002  FAQ #10 – pricing rephrased: Leider konnte ich Ihre Frage nicht verstehen.
+ 22 faq_paraphrase      0.81 YES NO  OK   60160  FAQ #2 – specific detail from : Ja, wir bieten 24/7 Helpdesk-Support an.
+ 23 faq_paraphrase      0.62 NO  YES OK    4177  FAQ #4 – specific cloud provid: Leider konnte ich Ihre Frage nicht verstehen.
+ 24 company_offtopic    0.36 NO  YES OK    2678  Company size – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 25 company_offtopic    0.25 NO  YES OK     769  Headquarters – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 26 company_offtopic    0.33 NO  YES OK     774  Company founding date – not in: Leider konnte ich Ihre Frage nicht verstehen.
+ 27 company_offtopic    0.30 NO  YES OK     579  Specific office location – not: Leider konnte ich Ihre Frage nicht verstehen.
+ 28 company_offtopic    0.22 NO  YES OK     570  Contact phone number – not in : Leider konnte ich Ihre Frage nicht verstehen.
+ 29 company_offtopic    0.25 NO  YES OK     991  CEO name – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 30 company_offtopic    0.48 NO  YES OK     698  Certifications – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 31 hallucination       0.48 NO  YES OK     771  Leading price claim for specif: Leider konnte ich Ihre Frage nicht verstehen.
+ 32 hallucination       0.44 NO  YES OK     751  Geographic expansion claim – n: Leider konnte ich Ihre Frage nicht verstehen.
+ 33 hallucination       0.59 NO  YES OK     638  Duration claim – not in FAQ an: Leider konnte ich Ihre Frage nicht verstehen.
+ 34 hallucination       0.34 NO  YES OK     646  Specific technology partner cl: Leider konnte ich Ihre Frage nicht verstehen.
+ 35 hallucination       0.44 NO  YES OK     659  Specific pricing tiers – not i: Leider konnte ich Ihre Frage nicht verstehen.
+ 36 general_chat        0.17 NO  NO  OK   19190  Simple greeting: Hallo! Wie können ich Ihnen heute helfen?
+ 37 general_chat        0.21 NO  NO  OK   25537  Morning greeting: Guten Morgen! Wie kann ich Ihnen heute helfen?
+ 38 general_chat        0.42 NO  NO  OK   25596  Thank you: Vielen Dank für Ihre Unterstützung!
+ 39 general_chat        0.12 NO  NO  OK   21946  Goodbye: Tschüss! Bis zum nächsten Mal.
+ 40 general_chat        0.25 NO  YES OK     745  Small talk – how are you: Leider konnte ich Ihre Frage nicht verstehen.
+ 41 general_chat        0.13 NO  NO  OK   22352  Bot identity question: Hallo! Ich bin Ihr freundlicher Kundenservice-Assistent. Wie
+ 42 general_chat        0.27 NO  NO  OK   24003  Bot capabilities question: Hallo! Ich bin Ihr freundlicher Kundenservice-Assistent. Was
+ 43 boundary            0.58 NO  YES OK     571  FAQ #1 with typo in key word: Leider konnte ich Ihre Frage nicht verstehen.
+ 44 boundary            0.32 NO  YES OK     476  Single-word query: Leider konnte ich Ihre Frage nicht verstehen.
+ 45 boundary            0.66 NO  YES OK     401  Single-word English query: Leider konnte ich Ihre Frage nicht verstehen.
+ 46 boundary            0.68 NO  YES OK     389  FAQ #1 in English: Leider konnte ich Ihre Frage nicht verstehen.
+ 47 boundary            0.75 YES NO  OK   11352  Mixed language (English + Germ: Ja, wir bieten Cloud-Dienste an.
+ 48 boundary            0.52 NO  YES OK     743  Very long, compound query touc: Leider konnte ich Ihre Frage nicht verstehen.
+
+========================================================================

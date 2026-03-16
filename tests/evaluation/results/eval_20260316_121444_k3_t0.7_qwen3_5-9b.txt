@@ -1,0 +1,221 @@
+========================================================================
+FAQ CHATBOT EVALUATION REPORT
+Timestamp : 2026-03-16 12:14:44
+Model     : qwen3.5:9b
+Embedding : nomic-embed-text-v2-moe
+top_k     : 3
+threshold : 0.7
+temp      : 0.1
+max_tokens: 512
+========================================================================
+
+SUMMARY BY CATEGORY
+------------------------------------------------------------------------
+  faq_direct              0/10 (  0.0%)  avg_score=0.00  avg_latency=2.0s
+  faq_paraphrase          0/13 (  0.0%)  avg_score=0.33  avg_latency=0.6s
+  company_offtopic        7/ 7 (100.0%)  avg_score=0.31  avg_latency=0.7s
+  hallucination           5/ 5 (100.0%)  avg_score=0.46  avg_latency=0.6s
+  general_chat            0/ 7 (  0.0%)  avg_score=0.04  avg_latency=0.6s
+  boundary                5/ 6 ( 83.3%)  avg_score=0.46  avg_latency=0.6s
+------------------------------------------------------------------------
+  TOTAL                  17/48 (35.4%)
+
+Latency: min=0.4s  max=0.8s  avg=0.6s
+
+FAILURES (31)
+------------------------------------------------------------------------
+
+  [faq_direct] FAQ #1 verbatim
+  Q: Welche IT-Dienstleistungen bieten Sie an?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_direct] FAQ #2 verbatim
+  Q: Welche Support-Optionen stehen zur Verfügung?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_direct] FAQ #3 verbatim
+  Q: Wie gehen Sie mit IT-Sicherheitsbedrohungen um?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_direct] FAQ #4 verbatim
+  Q: Bieten Sie Cloud-Migrationsdienste an?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_direct] FAQ #5 verbatim
+  Q: Wie können Sie uns bei der Einhaltung von Datenschutzvorschriften unterstützen?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_direct] FAQ #6 verbatim
+  Q: Welche Maßnahmen ergreifen Sie, um die Ausfallsicherheit meiner IT-Systeme zu ge
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_direct] FAQ #7 verbatim
+  Q: Können Sie maßgeschneiderte Softwarelösungen für unser Unternehmen entwickeln?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_direct] FAQ #8 verbatim
+  Q: Wie läuft eine typische IT-Beratung ab?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_direct] FAQ #9 verbatim
+  Q: Welche Branchen bedienen Sie?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_direct] FAQ #10 verbatim
+  Q: Wie viel kostet Ihre Dienstleistung?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_paraphrase] FAQ #1 – short paraphrase
+  Q: Was für Leistungen bieten Sie an?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_paraphrase] FAQ #1 – 'Services' instead of 'Dienstleistungen'
+  Q: Welche Services bietet Ihre Firma an?
+  score=0.66  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #2 – support options rephrased
+  Q: Wie kann ich Hilfe bekommen, wenn mein System nicht funktioniert?
+  score=0.55  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #3 – security rephrased
+  Q: Was tun Sie gegen Hackerangriffe?
+  score=0.55  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #4 – cloud migration rephrased
+  Q: Können Sie uns in die Cloud migrieren?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_paraphrase] FAQ #5 – DSGVO short form
+  Q: Helfen Sie bei der DSGVO-Compliance?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_paraphrase] FAQ #6 – availability rephrased
+  Q: Wie stellen Sie sicher, dass meine IT nicht ausfällt?
+  score=0.61  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #7 – custom software rephrased
+  Q: Entwickeln Sie auch individuelle Software?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_paraphrase] FAQ #8 – consulting rephrased
+  Q: Wie läuft eine Beratung bei Ihnen ab?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_paraphrase] FAQ #9 – industries rephrased
+  Q: Für welche Unternehmen und Branchen arbeiten Sie?
+  score=0.68  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #10 – pricing rephrased
+  Q: Was kostet es, Ihre Dienste zu nutzen?
+  score=0.59  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [faq_paraphrase] FAQ #2 – specific detail from support FAQ
+  Q: Haben Sie auch 24/7 Support?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [faq_paraphrase] FAQ #4 – specific cloud providers from answer text
+  Q: Arbeiten Sie mit AWS oder Azure?
+  score=0.62  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [general_chat] Simple greeting
+  Q: Hallo
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [general_chat] Morning greeting
+  Q: Guten Morgen!
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [general_chat] Thank you
+  Q: Danke für Ihre Hilfe!
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [general_chat] Goodbye
+  Q: Tschüss
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [general_chat] Small talk – how are you
+  Q: Wie geht es Ihnen?
+  score=0.25  retrieved=False  fallback=True  faq=None
+  FAIL fallback: expected=False got=True
+  A: Leider konnte ich Ihre Frage nicht verstehen.
+
+  [general_chat] Bot identity question
+  Q: Wer bist du?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [general_chat] Bot capabilities question
+  Q: Was kannst du?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+  [boundary] Mixed language (English + German)
+  Q: Do you offer cloud services? Bieten Sie Cloud-Dienste an?
+  ERROR: Generation failed: Failed to generate answer: Ollama request failed with status 404: model 'qwen3.5:9b' not found
+
+ALL RESULTS
+------------------------------------------------------------------------
+  # Cat                Score Ret  FB Halu    ms  Description / Answer
+------------------------------------------------------------------------
+  1 faq_direct          0.00 NO  YES OK   13297  FAQ #1 verbatim: Generation failed: Failed to generate answer: Ollama request
+  2 faq_direct          0.00 NO  YES OK     653  FAQ #2 verbatim: Generation failed: Failed to generate answer: Ollama request
+  3 faq_direct          0.00 NO  YES OK     879  FAQ #3 verbatim: Generation failed: Failed to generate answer: Ollama request
+  4 faq_direct          0.00 NO  YES OK     783  FAQ #4 verbatim: Generation failed: Failed to generate answer: Ollama request
+  5 faq_direct          0.00 NO  YES OK     687  FAQ #5 verbatim: Generation failed: Failed to generate answer: Ollama request
+  6 faq_direct          0.00 NO  YES OK     998  FAQ #6 verbatim: Generation failed: Failed to generate answer: Ollama request
+  7 faq_direct          0.00 NO  YES OK     619  FAQ #7 verbatim: Generation failed: Failed to generate answer: Ollama request
+  8 faq_direct          0.00 NO  YES OK     652  FAQ #8 verbatim: Generation failed: Failed to generate answer: Ollama request
+  9 faq_direct          0.00 NO  YES OK     535  FAQ #9 verbatim: Generation failed: Failed to generate answer: Ollama request
+ 10 faq_direct          0.00 NO  YES OK     633  FAQ #10 verbatim: Generation failed: Failed to generate answer: Ollama request
+ 11 faq_paraphrase      0.00 NO  YES OK     727  FAQ #1 – short paraphrase: Generation failed: Failed to generate answer: Ollama request
+ 12 faq_paraphrase      0.66 NO  YES OK     569  FAQ #1 – 'Services' instead of: Leider konnte ich Ihre Frage nicht verstehen.
+ 13 faq_paraphrase      0.55 NO  YES OK     645  FAQ #2 – support options rephr: Leider konnte ich Ihre Frage nicht verstehen.
+ 14 faq_paraphrase      0.55 NO  YES OK     750  FAQ #3 – security rephrased: Leider konnte ich Ihre Frage nicht verstehen.
+ 15 faq_paraphrase      0.00 NO  YES OK     586  FAQ #4 – cloud migration rephr: Generation failed: Failed to generate answer: Ollama request
+ 16 faq_paraphrase      0.00 NO  YES OK     549  FAQ #5 – DSGVO short form: Generation failed: Failed to generate answer: Ollama request
+ 17 faq_paraphrase      0.61 NO  YES OK     553  FAQ #6 – availability rephrase: Leider konnte ich Ihre Frage nicht verstehen.
+ 18 faq_paraphrase      0.00 NO  YES OK     575  FAQ #7 – custom software rephr: Generation failed: Failed to generate answer: Ollama request
+ 19 faq_paraphrase      0.00 NO  YES OK     440  FAQ #8 – consulting rephrased: Generation failed: Failed to generate answer: Ollama request
+ 20 faq_paraphrase      0.68 NO  YES OK     606  FAQ #9 – industries rephrased: Leider konnte ich Ihre Frage nicht verstehen.
+ 21 faq_paraphrase      0.59 NO  YES OK     520  FAQ #10 – pricing rephrased: Leider konnte ich Ihre Frage nicht verstehen.
+ 22 faq_paraphrase      0.00 NO  YES OK     496  FAQ #2 – specific detail from : Generation failed: Failed to generate answer: Ollama request
+ 23 faq_paraphrase      0.62 NO  YES OK     639  FAQ #4 – specific cloud provid: Leider konnte ich Ihre Frage nicht verstehen.
+ 24 company_offtopic    0.36 NO  YES OK     604  Company size – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 25 company_offtopic    0.25 NO  YES OK     601  Headquarters – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 26 company_offtopic    0.33 NO  YES OK     746  Company founding date – not in: Leider konnte ich Ihre Frage nicht verstehen.
+ 27 company_offtopic    0.30 NO  YES OK     661  Specific office location – not: Leider konnte ich Ihre Frage nicht verstehen.
+ 28 company_offtopic    0.22 NO  YES OK     508  Contact phone number – not in : Leider konnte ich Ihre Frage nicht verstehen.
+ 29 company_offtopic    0.25 NO  YES OK     789  CEO name – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 30 company_offtopic    0.48 NO  YES OK     672  Certifications – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 31 hallucination       0.48 NO  YES OK     561  Leading price claim for specif: Leider konnte ich Ihre Frage nicht verstehen.
+ 32 hallucination       0.44 NO  YES OK     527  Geographic expansion claim – n: Leider konnte ich Ihre Frage nicht verstehen.
+ 33 hallucination       0.59 NO  YES OK     600  Duration claim – not in FAQ an: Leider konnte ich Ihre Frage nicht verstehen.
+ 34 hallucination       0.34 NO  YES OK     710  Specific technology partner cl: Leider konnte ich Ihre Frage nicht verstehen.
+ 35 hallucination       0.44 NO  YES OK     558  Specific pricing tiers – not i: Leider konnte ich Ihre Frage nicht verstehen.
+ 36 general_chat        0.00 NO  YES OK     538  Simple greeting: Generation failed: Failed to generate answer: Ollama request
+ 37 general_chat        0.00 NO  YES OK     661  Morning greeting: Generation failed: Failed to generate answer: Ollama request
+ 38 general_chat        0.00 NO  YES OK     643  Thank you: Generation failed: Failed to generate answer: Ollama request
+ 39 general_chat        0.00 NO  YES OK     604  Goodbye: Generation failed: Failed to generate answer: Ollama request
+ 40 general_chat        0.25 NO  YES OK     652  Small talk – how are you: Leider konnte ich Ihre Frage nicht verstehen.
+ 41 general_chat        0.00 NO  YES OK     514  Bot identity question: Generation failed: Failed to generate answer: Ollama request
+ 42 general_chat        0.00 NO  YES OK     660  Bot capabilities question: Generation failed: Failed to generate answer: Ollama request
+ 43 boundary            0.58 NO  YES OK     624  FAQ #1 with typo in key word: Leider konnte ich Ihre Frage nicht verstehen.
+ 44 boundary            0.32 NO  YES OK     513  Single-word query: Leider konnte ich Ihre Frage nicht verstehen.
+ 45 boundary            0.66 NO  YES OK     436  Single-word English query: Leider konnte ich Ihre Frage nicht verstehen.
+ 46 boundary            0.68 NO  YES OK     697  FAQ #1 in English: Leider konnte ich Ihre Frage nicht verstehen.
+ 47 boundary            0.00 NO  YES OK     728  Mixed language (English + Germ: Generation failed: Failed to generate answer: Ollama request
+ 48 boundary            0.52 NO  YES OK     813  Very long, compound query touc: Leider konnte ich Ihre Frage nicht verstehen.
+
+========================================================================

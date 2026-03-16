@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import json
-from typing import Any, Mapping
+from dataclasses import dataclass, field
+from typing import Any, Iterator, Mapping
 
 import httpx
 
@@ -17,6 +17,15 @@ class OllamaClientError(RuntimeError):
     def __init__(self, message: str, *, status_code: int | None = None) -> None:
         super().__init__(message)
         self.status_code = status_code
+
+
+@dataclass(frozen=True, slots=True)
+class OllamaGenerationResult:
+    """Structured response returned from Ollama generation requests."""
+
+    response: str
+    thinking: str | None = None
+    done_reason: str | None = None
 
 
 @dataclass(slots=True)
@@ -77,27 +86,122 @@ class OllamaClient:
     def generate(self, prompt: str) -> str:
         """Generate a non-streaming answer for the given prompt."""
 
+        result = self.generate_response(prompt)
+        generated_text = result.response
+        if not generated_text:
+            raise OllamaClientError("Ollama returned an empty generation response")
+        return generated_text
+
+    def generate_response(
+        self,
+        prompt: str,
+        *,
+        think: bool | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> OllamaGenerationResult:
+        """Generate a non-streaming response with optional thinking output."""
+
         normalized_prompt = prompt.strip()
         if not normalized_prompt:
             raise OllamaClientError("Generation prompt must not be empty")
 
-        response = self._request_json(
-            "POST",
-            "/api/generate",
-            {
-                "model": self.generate_model,
-                "prompt": normalized_prompt,
-                "stream": False,
-                "options": {
-                    "temperature": self.generate_temperature,
-                    "num_predict": self.generate_max_tokens,
-                },
+        payload: dict[str, Any] = {
+            "model": self.generate_model,
+            "prompt": normalized_prompt,
+            "stream": False,
+            "options": {
+                "temperature": (
+                    self.generate_temperature
+                    if temperature is None
+                    else temperature
+                ),
+                "num_predict": (
+                    self.generate_max_tokens
+                    if max_tokens is None
+                    else max_tokens
+                ),
             },
-        )
+        }
+        if think is not None:
+            payload["think"] = think
+
+        response = self._request_json("POST", "/api/generate", payload)
+
         generated_text = response.get("response")
-        if not isinstance(generated_text, str) or not generated_text.strip():
-            raise OllamaClientError("Ollama returned an empty generation response")
-        return generated_text.strip()
+        thinking_text = response.get("thinking")
+        done_reason = response.get("done_reason")
+
+        if not isinstance(generated_text, str):
+            raise OllamaClientError("Ollama returned an invalid generation response")
+        if thinking_text is not None and not isinstance(thinking_text, str):
+            raise OllamaClientError("Ollama returned an invalid thinking response")
+        if done_reason is not None and not isinstance(done_reason, str):
+            raise OllamaClientError("Ollama returned an invalid done reason")
+
+        normalized_thinking = thinking_text.strip() or None if thinking_text else None
+        normalized_done_reason = done_reason.strip() or None if done_reason else None
+
+        return OllamaGenerationResult(
+            response=generated_text.strip(),
+            thinking=normalized_thinking,
+            done_reason=normalized_done_reason,
+        )
+
+    def generate_streaming(
+        self,
+        prompt: str,
+        *,
+        think: bool | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> Iterator[str]:
+        """Generate a streaming response, yielding text tokens as they arrive."""
+
+        normalized_prompt = prompt.strip()
+        if not normalized_prompt:
+            raise OllamaClientError("Generation prompt must not be empty")
+
+        payload: dict[str, Any] = {
+            "model": self.generate_model,
+            "prompt": normalized_prompt,
+            "stream": True,
+            "options": {
+                "temperature": (
+                    self.generate_temperature if temperature is None else temperature
+                ),
+                "num_predict": (
+                    self.generate_max_tokens if max_tokens is None else max_tokens
+                ),
+            },
+        }
+        if think is not None:
+            payload["think"] = think
+
+        try:
+            with self._client.stream("POST", "/api/generate", json=payload) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if not line:
+                        continue
+                    try:
+                        chunk = json.loads(line)
+                    except ValueError:
+                        continue
+                    token = chunk.get("response", "")
+                    if token:
+                        yield token
+                    if chunk.get("done", False):
+                        break
+        except httpx.HTTPStatusError as exc:
+            raise OllamaClientError(
+                _format_http_error("Ollama", exc.response),
+                status_code=exc.response.status_code,
+            ) from exc
+        except httpx.TimeoutException as exc:
+            raise OllamaClientError("Ollama request timed out") from exc
+        except httpx.RequestError as exc:
+            raise OllamaClientError(f"Could not reach Ollama: {exc}") from exc
 
     def _request_json(
         self,
@@ -164,7 +268,7 @@ def _format_http_error(service_name: str, response: httpx.Response) -> str:
     if isinstance(parsed, dict) and isinstance(parsed.get("error"), str):
         detail = parsed["error"].strip()
     elif response.text:
-       detail = response.text.strip()
+        detail = response.text.strip()
 
     if detail:
         return f"{service_name} request failed with status {response.status_code}: {detail}"

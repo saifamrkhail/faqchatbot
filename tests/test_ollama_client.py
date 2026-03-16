@@ -95,6 +95,76 @@ def test_generate_builds_expected_request_payload(monkeypatch: pytest.MonkeyPatc
     }
 
 
+def test_generate_response_supports_thinking_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = OllamaClient(
+        base_url="http://ollama.local",
+        generate_model="gen",
+        embedding_model="embed",
+        timeout_seconds=30.0,
+        generate_temperature=0.1,
+        generate_max_tokens=160,
+    )
+    recorded: dict[str, object] = {}
+
+    def fake_request(
+        self, method: str, path: str, payload: dict[str, object]
+    ) -> dict[str, object]:
+        recorded["method"] = method
+        recorded["path"] = path
+        recorded["payload"] = payload
+        return {
+            "response": "",
+            "thinking": " Erst denken ",
+            "done_reason": "length",
+        }
+
+    monkeypatch.setattr(OllamaClient, "_request_json", fake_request)
+
+    response = client.generate_response(
+        " Bitte antworte ",
+        think=True,
+        temperature=0.0,
+        max_tokens=96,
+    )
+
+    assert response.response == ""
+    assert response.thinking == "Erst denken"
+    assert response.done_reason == "length"
+    assert recorded == {
+        "method": "POST",
+        "path": "/api/generate",
+        "payload": {
+            "model": "gen",
+            "prompt": "Bitte antworte",
+            "stream": False,
+            "think": True,
+            "options": {"temperature": 0.0, "num_predict": 96},
+        },
+    }
+
+
+def test_generate_rejects_empty_response_without_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = OllamaClient(
+        base_url="http://ollama.local",
+        generate_model="gen",
+        embedding_model="embed",
+        timeout_seconds=30.0,
+        generate_temperature=0.1,
+        generate_max_tokens=160,
+    )
+
+    monkeypatch.setattr(
+        OllamaClient,
+        "_request_json",
+        lambda self, method, path, payload: {"response": ""},
+    )
+
+    with pytest.raises(OllamaClientError, match="empty generation response"):
+        client.generate(" Bitte antworte ")
+
+
 def test_request_json_wraps_transport_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     client = OllamaClient(
         base_url="http://ollama.local",
