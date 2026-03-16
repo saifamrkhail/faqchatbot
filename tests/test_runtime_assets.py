@@ -29,7 +29,11 @@ def test_docker_compose_wires_qdrant_and_host_ollama() -> None:
     assert "\n  ollama-models:\n" not in content
     assert "extra_hosts:" in content
     assert "host.docker.internal:host-gateway" in content
-    assert "FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333" in content
+    assert (
+        "FAQ_CHATBOT_QDRANT_URL: "
+        "${FAQ_CHATBOT_QDRANT_URL:-http://qdrant:6333}"
+        in content
+    )
     assert (
         "FAQ_CHATBOT_OLLAMA_BASE_URL: "
         "${FAQ_CHATBOT_OLLAMA_BASE_URL:-http://host.docker.internal:11434}"

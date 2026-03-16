@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
     environment:
       FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
-      FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333
+      FAQ_CHATBOT_QDRANT_URL: ${FAQ_CHATBOT_QDRANT_URL:-http://qdrant:6333}
       FAQ_CHATBOT_OLLAMA_BASE_URL: ${FAQ_CHATBOT_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:9b
       FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text-v2-moe
@@ -46,7 +46,7 @@ services:
       dockerfile: Dockerfile
     environment:
       FAQ_CHATBOT_FAQ_DATA_PATH: /app/data/faq.json
-      FAQ_CHATBOT_QDRANT_URL: http://qdrant:6333
+      FAQ_CHATBOT_QDRANT_URL: ${FAQ_CHATBOT_QDRANT_URL:-http://qdrant:6333}
       FAQ_CHATBOT_OLLAMA_BASE_URL: ${FAQ_CHATBOT_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       FAQ_CHATBOT_OLLAMA_GENERATE_MODEL: qwen3.5:9b
       FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text-v2-moe
