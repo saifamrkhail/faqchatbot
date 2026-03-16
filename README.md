@@ -9,9 +9,10 @@ The bot answers questions **only from FAQ context** and returns a deterministic 
 ## Quick Start 🚀
 
 ### Prerequisites
-- **Docker** & **Docker Compose** (v2.0+) — OR —
+- **Docker** & **Docker Compose** (v2.0+)
 - **Python 3.11+** and **uv** for local development
-- ~5 GB disk space (for models)
+- **Ollama** latest version
+- qwen3.5:9b and nomic-embed-text-v2-moe models (pull these models with ollama)
 - Internet connection (first run downloads models)
 
 ---
@@ -28,8 +29,8 @@ Make sure you have:
 ### **Step 1: Clone & Navigate**
 
 ```bash
-git clone <your-repo-url>
-cd faqchatbot-claude
+git clone https://github.com/saifamrkhail/faqchatbot.git
+cd faqchatbot
 ```
 
 ### **Step 2: Start Core Services**
