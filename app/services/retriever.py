@@ -22,7 +22,7 @@ class RetrieverError(RuntimeError):
 
 @dataclass(slots=True)
 class Retriever:
-    """Semantic FAQ retrieval from vector store."""
+    """Embed a question, search Qdrant, and apply the retrieval threshold."""
 
     ollama_client: OllamaClient
     qdrant_client: QdrantClient
@@ -41,10 +41,7 @@ class Retriever:
         )
 
     def retrieve(self, question: str) -> RetrievalResult:
-        """Find the best FAQ match for a user question.
-
-        Returns RetrievalResult with matched_entry=None if below threshold.
-        """
+        """Find the best FAQ match for a user question."""
 
         try:
             normalized_question = question.strip()
@@ -53,9 +50,7 @@ class Retriever:
 
             vector = self._embed_question(normalized_question)
             search_results = self._search_vector_store(vector)
-            result = self._evaluate_threshold(search_results)
-
-            return result
+            return self._evaluate_threshold(search_results)
         except OllamaClientError as exc:
             raise RetrieverError(f"Failed to embed question: {exc}") from exc
         except QdrantClientError as exc:
@@ -93,10 +88,7 @@ class Retriever:
     def _evaluate_threshold(
         self, results: list[tuple[FAQEntry, float]]
     ) -> RetrievalResult:
-        """Evaluate search results against threshold.
-
-        Returns matched_entry=None if no results or score below threshold.
-        """
+        """Decide whether the top result is strong enough to trust."""
 
         if not results:
             return RetrievalResult(
@@ -106,6 +98,7 @@ class Retriever:
                 retrieved=False,
             )
 
+        # Only the top hit decides whether generation may use FAQ context.
         best_entry, best_score = results[0]
 
         return RetrievalResult(

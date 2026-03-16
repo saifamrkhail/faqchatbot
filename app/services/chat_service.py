@@ -16,11 +16,7 @@ class ChatServiceError(RuntimeError):
 
 @dataclass(slots=True)
 class ChatService:
-    """Orchestrates retrieval and answer generation for a single chat turn.
-
-    Accepts a user question and returns a complete ChatResponse with
-    answer, confidence, and metadata.
-    """
+    """UI-independent facade for one full chat turn."""
 
     retriever: Retriever
     answer_generator: AnswerGenerator
@@ -37,15 +33,7 @@ class ChatService:
         )
 
     def handle_question(self, question: str) -> ChatResponse:
-        """Handle a user question through the complete chat pipeline.
-
-        1. Normalizes the question
-        2. Retrieves relevant FAQ via Retriever
-        3. Generates answer via AnswerGenerator
-        4. Wraps result in ChatResponse
-
-        Raises ChatServiceError if any step fails.
-        """
+        """Run validation, retrieval, generation, and response mapping."""
 
         try:
             normalized_question = question.strip()
@@ -57,15 +45,12 @@ class ChatService:
                     f"{self.max_question_chars} characters"
                 )
 
-            # Step 1: Retrieve relevant FAQ
             retrieval_result = self.retriever.retrieve(normalized_question)
 
-            # Step 2: Generate answer (grounded or fallback)
             answer_response = self.answer_generator.generate(
                 normalized_question, retrieval_result
             )
 
-            # Step 3: Build and return ChatResponse
             return ChatResponse(
                 question=normalized_question,
                 answer=answer_response.answer,

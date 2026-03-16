@@ -38,7 +38,7 @@ class SettingsError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class AppSettings:
-    """Typed runtime settings loaded from environment variables."""
+    """Centralized runtime settings for every configurable system boundary."""
 
     app_name: str = DEFAULT_APP_NAME
     environment: str = DEFAULT_ENVIRONMENT
@@ -62,6 +62,8 @@ class AppSettings:
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "AppSettings":
+        """Load and validate all ``FAQ_CHATBOT_*`` variables in one pass."""
+
         env = os.environ if environ is None else environ
 
         app_name = _get_string(env, "APP_NAME", DEFAULT_APP_NAME)
@@ -191,6 +193,8 @@ def clear_settings_cache() -> None:
 
 @lru_cache(maxsize=1)
 def _load_settings() -> AppSettings:
+    """Cache settings so the rest of the app can treat config as immutable."""
+
     return AppSettings.from_env()
 
 
@@ -204,6 +208,8 @@ def resolve_project_path(path_value: str | Path) -> Path:
 
 
 def _get_string(env: Mapping[str, str], key: str, default: str) -> str:
+    """Read a non-empty string setting from the prefixed environment."""
+
     value = env.get(f"{ENV_PREFIX}{key}", default)
     stripped = value.strip()
     if not stripped:
@@ -212,6 +218,8 @@ def _get_string(env: Mapping[str, str], key: str, default: str) -> str:
 
 
 def _parse_bool(value: str, key: str) -> bool:
+    """Parse a permissive boolean syntax used by env vars."""
+
     normalized = value.strip().lower()
     if normalized in {"1", "true", "yes", "on"}:
         return True
@@ -221,6 +229,8 @@ def _parse_bool(value: str, key: str) -> bool:
 
 
 def _parse_int(value: str, key: str, *, minimum: int) -> int:
+    """Parse an integer setting and enforce its lower bound."""
+
     try:
         parsed = int(value)
     except ValueError as exc:
@@ -232,6 +242,8 @@ def _parse_int(value: str, key: str, *, minimum: int) -> int:
 
 
 def _parse_float(value: str, key: str, *, minimum: float, maximum: float) -> float:
+    """Parse a float setting and enforce its allowed range."""
+
     try:
         parsed = float(value)
     except ValueError as exc:
@@ -243,6 +255,8 @@ def _parse_float(value: str, key: str, *, minimum: float, maximum: float) -> flo
 
 
 def _parse_log_level(value: str) -> str:
+    """Normalize log levels to the accepted uppercase set."""
+
     normalized = value.upper()
     if normalized not in _VALID_LOG_LEVELS:
         supported = ", ".join(sorted(_VALID_LOG_LEVELS))

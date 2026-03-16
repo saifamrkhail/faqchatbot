@@ -32,11 +32,13 @@ class ChatServiceProtocol(Protocol):
 
 @dataclass(slots=True)
 class ChatServiceAdapter:
-    """Async adapter for the synchronous core ChatService."""
+    """Bridge the sync core service into the async Textual event loop."""
 
     chat_service: ChatService
 
     async def ask(self, question: str) -> ChatResponse:
+        """Run the blocking chat pipeline off the UI thread."""
+
         response = await asyncio.to_thread(self.chat_service.handle_question, question)
         return _to_ui_response(response)
 
@@ -66,6 +68,8 @@ class StubChatService:
 
 
 def _to_ui_response(response: DomainChatResponse) -> ChatResponse:
+    """Shrink the domain response down to the fields the UI renders."""
+
     return ChatResponse(
         answer=response.answer,
         source_faq=response.source_faq_id,

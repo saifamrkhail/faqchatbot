@@ -44,6 +44,8 @@ class FAQChatApp(App):
             self.title = title
 
     def compose(self) -> ComposeResult:
+        """Build the fixed shell: header, transcript, status, input, footer."""
+
         yield Header()
         yield ChatLog(id="chat-log")
         yield StatusIndicator(id="status-indicator")
@@ -51,6 +53,8 @@ class FAQChatApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        """Seed the chat log with the initial prompt and focus the input."""
+
         chat_log = self.query_one("#chat-log", ChatLog)
         chat_log.mount(
             Static(
@@ -61,7 +65,7 @@ class FAQChatApp(App):
         self.query_one("#input-area", ChatInput).focus_input()
 
     async def on_chat_input_submitted(self, event: ChatInput.Submitted) -> None:
-        """Handle a user question submission."""
+        """Push one user question through the backend and update UI state."""
 
         question = event.question
         chat_log = self.query_one("#chat-log", ChatLog)

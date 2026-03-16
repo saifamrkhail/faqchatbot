@@ -56,7 +56,7 @@ class QdrantCollectionConfig:
 
 @dataclass(slots=True)
 class QdrantClient:
-    """Minimal client for collection management and vector operations."""
+    """Thin Qdrant wrapper for collection checks, upserts, and similarity search."""
 
     base_url: str
     collection_name: str
@@ -85,7 +85,7 @@ class QdrantClient:
         *,
         distance: str = DEFAULT_QDRANT_DISTANCE,
     ) -> None:
-        """Create the collection if missing, otherwise verify vector size."""
+        """Create the collection if needed, otherwise verify compatibility."""
 
         if vector_size < 1:
             raise QdrantClientError("Vector size must be >= 1")
@@ -172,6 +172,7 @@ class QdrantClient:
         except QdrantClientError as exc:
             if exc.status_code != 404:
                 raise
+            # Older Qdrant versions expose ``/points/search`` instead of ``/points/query``.
             response = self._request_json(
                 "POST",
                 f"/collections/{self.collection_name}/points/search",
@@ -214,7 +215,7 @@ class QdrantClient:
         path: str,
         payload: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Execute JSON request and handle httpx exceptions."""
+        """Execute one JSON request and translate transport failures."""
         try:
             response = self._client.request(
                 method,
@@ -247,6 +248,8 @@ class QdrantClient:
 
 
 def _extract_vector_config(collection_info: Mapping[str, Any]) -> QdrantCollectionConfig:
+    """Read vector size and distance from both named and unnamed Qdrant configs."""
+
     result = collection_info.get("result")
     if not isinstance(result, Mapping):
         raise QdrantClientError("Qdrant collection response is missing 'result'")
@@ -267,6 +270,7 @@ def _extract_vector_config(collection_info: Mapping[str, Any]) -> QdrantCollecti
     size = vector_config.get("size")
     distance = vector_config.get("distance")
     if not isinstance(size, int) or not isinstance(distance, str):
+        # Qdrant may also nest config under a single named vector key.
         if len(vectors) == 1:
             vector_config = next(iter(vectors.values()))
             if not isinstance(vector_config, Mapping):
@@ -282,6 +286,8 @@ def _extract_vector_config(collection_info: Mapping[str, Any]) -> QdrantCollecti
 
 
 def _format_http_error(service_name: str, response: httpx.Response) -> str:
+    """Extract the most useful error detail from an HTTP response."""
+
     try:
         parsed = response.json()
     except ValueError:

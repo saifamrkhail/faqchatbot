@@ -21,7 +21,7 @@ class OllamaClientError(RuntimeError):
 
 @dataclass(slots=True)
 class OllamaClient:
-    """Minimal client for Ollama embeddings and generation."""
+    """Thin Ollama wrapper so higher layers never deal with raw HTTP shapes."""
 
     base_url: str
     generate_model: str
@@ -63,6 +63,7 @@ class OllamaClient:
             {"model": self.embedding_model, "input": normalized_text},
         )
 
+        # Ollama has returned both ``embedding`` and ``embeddings`` payload shapes.
         if "embeddings" in response:
             embeddings = response["embeddings"]
             if not isinstance(embeddings, list) or not embeddings:
@@ -104,7 +105,7 @@ class OllamaClient:
         path: str,
         payload: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Execute JSON request and handle httpx exceptions."""
+        """Execute one JSON request and translate transport failures."""
 
         try:
             response = self._client.request(
@@ -138,6 +139,8 @@ class OllamaClient:
 
 
 def _normalize_vector(value: Any, field_name: str) -> list[float]:
+    """Validate numeric vectors before the rest of the app consumes them."""
+
     if not isinstance(value, list) or not value:
         raise OllamaClientError(f"Ollama returned an invalid {field_name} vector")
 
@@ -150,6 +153,8 @@ def _normalize_vector(value: Any, field_name: str) -> list[float]:
 
 
 def _format_http_error(service_name: str, response: httpx.Response) -> str:
+    """Extract the most useful error detail from an HTTP response."""
+
     try:
         parsed = response.json()
     except ValueError:

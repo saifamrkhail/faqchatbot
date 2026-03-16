@@ -22,7 +22,7 @@ class AnswerGeneratorError(RuntimeError):
 
 @dataclass(slots=True)
 class AnswerGenerator:
-    """Generates grounded answers from retrieved FAQ context."""
+    """Turn retrieval output into a grounded answer or deterministic fallback."""
 
     ollama_client: OllamaClient
     prompt_template: PromptTemplate
@@ -39,18 +39,14 @@ class AnswerGenerator:
         )
 
     def generate(self, question: str, retrieval: RetrievalResult) -> AnswerResponse:
-        """Generate an answer based on question and retrieval result.
-
-        If retrieval.retrieved is True, generates a grounded answer from the FAQ.
-        If retrieval.retrieved is False, returns the fallback message.
-        """
+        """Generate an answer from retrieval output."""
 
         try:
             normalized_question = question.strip()
             if not normalized_question:
                 raise AnswerGeneratorError("Question must not be empty")
 
-            # If retrieval failed (below threshold), use fallback
+            # Retrieval is the gatekeeper: no trusted match means no model answer.
             if not retrieval.retrieved:
                 return AnswerResponse(
                     answer=self._get_fallback_answer(),
@@ -60,9 +56,8 @@ class AnswerGenerator:
                     used_retrieval=False,
                 )
 
-            # Retrieval succeeded, generate grounded answer
             if retrieval.matched_entry is None:
-                # This shouldn't happen if retrieved=True, but handle gracefully
+                # Keep the fallback deterministic even if the retrieval state is inconsistent.
                 return AnswerResponse(
                     answer=self._get_fallback_answer(),
                     confidence=retrieval.score,
@@ -74,6 +69,7 @@ class AnswerGenerator:
             prompt = self._build_prompt(normalized_question, retrieval.matched_entry)
             answer = self._generate_answer(prompt)
             if not self._is_grounded_answer(answer, retrieval.matched_entry):
+                # A lightweight lexical overlap check blocks obvious hallucinations.
                 logger.warning(
                     "Generated answer failed lexical grounding check. "
                     "Fallback triggered. "
@@ -105,15 +101,12 @@ class AnswerGenerator:
             raise AnswerGeneratorError(f"Unexpected error during generation: {exc}") from exc
 
     def _build_prompt(self, question: str, faq_entry: FAQEntry) -> str:
-        """Build a grounded prompt from question and FAQ entry."""
+        """Build the prompt sent to the generation model."""
 
         return self.prompt_template.build(question, faq_entry)
 
     def _generate_answer(self, prompt: str) -> str:
-        """Generate answer text via OllamaClient.
-
-        Validates that the answer is non-empty and reasonable.
-        """
+        """Call Ollama and reject empty generations early."""
 
         answer = self.ollama_client.generate(prompt)
 
@@ -153,6 +146,8 @@ class AnswerGenerator:
 
 
 def _extract_terms(text: str) -> set[str]:
+    """Collect coarse lexical anchors used by the grounding sanity check."""
+
     return {
         term
         for term in re.findall(r"[A-Za-z0-9À-ÿ]{4,}", text.casefold())

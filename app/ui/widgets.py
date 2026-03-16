@@ -64,10 +64,10 @@ class StatusIndicator(Static):
 
 
 class ChatInput(Widget):
-    """Input bar with a send button that fires a custom message."""
+    """Input bar that translates Textual events into one ``Submitted`` message."""
 
     class Submitted(Message):
-        """Fired when the user submits a question."""
+        """Message emitted after the input has been validated and cleared."""
 
         def __init__(self, question: str) -> None:
             super().__init__()
@@ -89,6 +89,8 @@ class ChatInput(Widget):
         self._submit()
 
     def _submit(self) -> None:
+        """Normalize the text box value and emit a single submit event."""
+
         input_widget = self.query_one("#chat-input", Input)
         question = input_widget.value.strip()
         if not question:
