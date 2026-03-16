@@ -12,7 +12,6 @@ The bot answers questions **only from FAQ context** and returns a deterministic 
 - **Docker** & **Docker Compose** (v2.0+)
 - **Ollama** installed and running on the **host machine**
 - Host Ollama must have `qwen3.5:9b` and `nomic-embed-text-v2-moe` available
-- Internet connection to pull models on first run
 - **Python 3.11+** and **uv** for local development
 
 ---

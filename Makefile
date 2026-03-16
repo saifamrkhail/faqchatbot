@@ -11,8 +11,15 @@ CYAN := \033[0;36m
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 NC := \033[0m # No Color
+UV_CACHE_DIR ?= .uv-cache
+UV := UV_CACHE_DIR=$(UV_CACHE_DIR) uv
 HOST_OLLAMA_URL ?= http://localhost:11434
-COMPOSE_APP_ENV := FAQ_CHATBOT_OLLAMA_BASE_URL=$(HOST_OLLAMA_URL)
+OLLAMA_CONTAINER_URL ?= http://host.docker.internal:11434
+USE_EXTERNAL_QDRANT ?= false
+QDRANT_HOST_URL ?= http://localhost:6333
+QDRANT_CONTAINER_URL ?= $(if $(filter true TRUE 1,$(USE_EXTERNAL_QDRANT)),http://host.docker.internal:6333,http://qdrant:6333)
+COMPOSE_APP_ENV := FAQ_CHATBOT_OLLAMA_BASE_URL=$(OLLAMA_CONTAINER_URL) FAQ_CHATBOT_QDRANT_URL=$(QDRANT_CONTAINER_URL)
+COMPOSE_NO_DEPS_FLAG := $(if $(filter true TRUE 1,$(USE_EXTERNAL_QDRANT)),--no-deps,)
 
 # Help target
 help:
@@ -23,6 +30,7 @@ help:
 	@echo "$(YELLOW)Terminal 1:$(NC)"
 	@echo "  $$ make pull-models     # Pull required models on host Ollama"
 	@echo "  $$ make up              # Start Qdrant in Docker"
+	@echo "  $$ make up USE_EXTERNAL_QDRANT=true  # Reuse existing Qdrant on port 6333"
 	@echo ""
 	@echo "$(YELLOW)Terminal 2:$(NC)"
 	@echo "  $$ make ingest          # Load FAQ data"
@@ -66,17 +74,31 @@ build:
 up:
 	@echo "$(CYAN)Starting Qdrant in Docker...$(NC)"
 	@echo "$(YELLOW)Host Ollama must already be running at $(HOST_OLLAMA_URL)$(NC)"
-	docker compose up -d qdrant
+	@if [ "$(USE_EXTERNAL_QDRANT)" = "true" ] || [ "$(USE_EXTERNAL_QDRANT)" = "TRUE" ] || [ "$(USE_EXTERNAL_QDRANT)" = "1" ]; then \
+		echo "$(YELLOW)Using external Qdrant at $(QDRANT_HOST_URL); not starting local qdrant container$(NC)"; \
+	else \
+		docker compose up -d qdrant; \
+	fi
 
 up-all:
 	@echo "$(CYAN)Starting Qdrant and app logs...$(NC)"
 	@echo "$(YELLOW)Host Ollama must already be running at $(HOST_OLLAMA_URL)$(NC)"
-	$(COMPOSE_APP_ENV) docker compose up --build qdrant app
+	@if [ "$(USE_EXTERNAL_QDRANT)" = "true" ] || [ "$(USE_EXTERNAL_QDRANT)" = "TRUE" ] || [ "$(USE_EXTERNAL_QDRANT)" = "1" ]; then \
+		echo "$(YELLOW)Using external Qdrant at $(QDRANT_HOST_URL); starting app only$(NC)"; \
+		$(COMPOSE_APP_ENV) docker compose up $(COMPOSE_NO_DEPS_FLAG) --build app; \
+	else \
+		$(COMPOSE_APP_ENV) docker compose up --build qdrant app; \
+	fi
 
 up-bg:
 	@echo "$(CYAN)Starting Qdrant and app in background...$(NC)"
 	@echo "$(YELLOW)Host Ollama must already be running at $(HOST_OLLAMA_URL)$(NC)"
-	$(COMPOSE_APP_ENV) docker compose up -d --build qdrant app
+	@if [ "$(USE_EXTERNAL_QDRANT)" = "true" ] || [ "$(USE_EXTERNAL_QDRANT)" = "TRUE" ] || [ "$(USE_EXTERNAL_QDRANT)" = "1" ]; then \
+		echo "$(YELLOW)Using external Qdrant at $(QDRANT_HOST_URL); starting app only$(NC)"; \
+		$(COMPOSE_APP_ENV) docker compose up -d $(COMPOSE_NO_DEPS_FLAG) --build app; \
+	else \
+		$(COMPOSE_APP_ENV) docker compose up -d --build qdrant app; \
+	fi
 
 down:
 	@echo "$(CYAN)Stopping all services...$(NC)"
@@ -89,7 +111,11 @@ logs:
 	docker compose logs -f app
 
 logs-qdrant:
-	docker compose logs -f qdrant
+	@if [ "$(USE_EXTERNAL_QDRANT)" = "true" ] || [ "$(USE_EXTERNAL_QDRANT)" = "TRUE" ] || [ "$(USE_EXTERNAL_QDRANT)" = "1" ]; then \
+		echo "$(YELLOW)Using external Qdrant at $(QDRANT_HOST_URL); no local compose logs are available$(NC)"; \
+	else \
+		docker compose logs -f qdrant; \
+	fi
 
 rebuild:
 	@echo "$(CYAN)Rebuilding app image...$(NC)"
@@ -107,15 +133,15 @@ pull-models:
 
 ingest:
 	@echo "$(CYAN)Ingesting FAQ data...$(NC)"
-	$(COMPOSE_APP_ENV) docker compose run --rm --build ingest
+	$(COMPOSE_APP_ENV) docker compose run --rm --build $(COMPOSE_NO_DEPS_FLAG) ingest
 
 chat:
 	@echo "$(CYAN)Starting chatbot...$(NC)"
-	$(COMPOSE_APP_ENV) docker compose run --rm --build app
+	$(COMPOSE_APP_ENV) docker compose run --rm --build $(COMPOSE_NO_DEPS_FLAG) app
 
 chat-bg:
 	@echo "$(CYAN)Starting chatbot in background...$(NC)"
-	$(COMPOSE_APP_ENV) docker compose up -d --build app
+	$(COMPOSE_APP_ENV) docker compose up -d $(COMPOSE_NO_DEPS_FLAG) --build app
 
 # ============================================================================
 # Local Development (no Docker)
@@ -123,44 +149,44 @@ chat-bg:
 
 sync:
 	@echo "$(CYAN)Installing dependencies with uv...$(NC)"
-	uv sync
+	$(UV) sync --group dev
 
 test:
 	@echo "$(CYAN)Running tests...$(NC)"
-	uv run pytest -v
+	$(UV) run --group dev python -m pytest -v
 
 eval:
 	@echo "$(CYAN)Running chatbot evaluation against live services...$(NC)"
-	uv run python -m tests.evaluation.runner -v
+	$(UV) run python -m tests.evaluation.runner -v
 
 eval-category:
 	@echo "$(CYAN)Running evaluation for category: $(CAT)$(NC)"
-	uv run python -m tests.evaluation.runner -v --category $(CAT)
+	$(UV) run python -m tests.evaluation.runner -v --category $(CAT)
 
 grid-search:
 	@echo "$(CYAN)Running parameter grid search (quick)...$(NC)"
-	uv run python -m tests.evaluation.grid_search --quick
+	$(UV) run python -m tests.evaluation.grid_search --quick
 
 grid-search-full:
 	@echo "$(CYAN)Running full parameter grid search...$(NC)"
-	uv run python -m tests.evaluation.grid_search
+	$(UV) run python -m tests.evaluation.grid_search
 
 test-watch:
 	@echo "$(CYAN)Running tests in watch mode...$(NC)"
-	uv run pytest-watch
+	$(UV) run --group dev --with pytest-watch python -m pytest_watch --config .pytest-watch.ini --runner "python -m pytest -q"
 
 test-coverage:
 	@echo "$(CYAN)Running tests with coverage...$(NC)"
-	uv run pytest --cov=app --cov-report=html
+	$(UV) run --group dev python -m pytest --cov=app --cov-report=html
 	@echo "$(GREEN)Coverage report: htmlcov/index.html$(NC)"
 
 run-local:
 	@echo "$(CYAN)Running chatbot locally...$(NC)"
-	uv run faqchatbot --tui
+	$(UV) run faqchatbot --tui
 
 ingest-local:
 	@echo "$(CYAN)Ingesting FAQ data locally...$(NC)"
-	uv run python -m scripts.ingest
+	$(UV) run python -m scripts.ingest
 
 # ============================================================================
 # Cleanup
@@ -174,7 +200,7 @@ clean:
 clean-hard: clean
 	@echo "$(YELLOW)Removing all images...$(NC)"
 	docker compose rm -f
-	docker rmi $$(docker images -q faqchatbot*) 2>/dev/null || true
+	docker rmi $$(docker images -q faqchatbot-codex*) 2>/dev/null || true
 	@echo "$(GREEN)Hard clean complete$(NC)"
 
 clean-py:
@@ -192,7 +218,7 @@ clean-py:
 health:
 	@echo "$(CYAN)Checking service health...$(NC)"
 	@echo "Host Ollama: $$(curl -s $(HOST_OLLAMA_URL)/api/tags > /dev/null && echo '✓ OK' || echo '✗ FAIL')"
-	@echo "Qdrant: $$(curl -s http://localhost:6333/health > /dev/null && echo '✓ OK' || echo '✗ FAIL')"
+	@echo "Qdrant: $$(curl -s $(QDRANT_HOST_URL)/health > /dev/null && echo '✓ OK' || echo '✗ FAIL')"
 
 models:
 	@echo "$(CYAN)Checking host Ollama models...$(NC)"
