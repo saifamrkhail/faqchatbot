@@ -5,7 +5,9 @@
     "alt_questions": [
       "Was für IT-Services gibt es bei Ihnen?",
       "Welche Leistungen umfasst Ihr IT-Angebot?",
-      "Was bietet Ihr Unternehmen im IT-Bereich an?"
+      "Was bietet Ihr Unternehmen im IT-Bereich an?",
+      "What IT services do you offer?",
+      "What does your IT service portfolio include?"
     ],
     "answer": "Wir bieten eine breite Palette von IT-Dienstleistungen an, darunter Netzwerkmanagement, IT-Support, Cloud-Lösungen, Datensicherung und Wiederherstellung, Cybersicherheitslösungen, Softwareentwicklung sowie IT-Beratung und IT-Strategie.",
     "category": "services",
@@ -25,7 +27,9 @@
     "alt_questions": [
       "Wie kann ich Support erhalten?",
       "Welche Möglichkeiten gibt es für technische Hilfe?",
-      "Haben Sie einen 24/7 Helpdesk?"
+      "Haben Sie einen 24/7 Helpdesk?",
+      "What support options do you offer?",
+      "Do you have 24/7 helpdesk support?"
     ],
     "answer": "Wir bieten verschiedene Support-Optionen an, einschließlich 24/7 Helpdesk-Support, Remote-Support, Vor-Ort-Support und spezialisierte technische Unterstützung. Unsere Support-Teams stehen Ihnen jederzeit zur Verfügung, um sicherzustellen, dass Ihre IT-Infrastruktur reibungslos funktioniert.",
     "category": "support",
@@ -45,7 +49,9 @@
     "alt_questions": [
       "Was tun Sie gegen Hackerangriffe?",
       "Wie schützen Sie meine IT vor Cyberangriffen?",
-      "Welche Cybersicherheitsmaßnahmen haben Sie?"
+      "Welche Cybersicherheitsmaßnahmen haben Sie?",
+      "How do you handle cybersecurity threats?",
+      "What measures protect against hackers?"
     ],
     "answer": "Wir verwenden eine Kombination aus modernsten Cybersicherheitslösungen, regelmäßigen Sicherheitsüberprüfungen und Schulungen für Mitarbeiter, um IT-Sicherheitsbedrohungen zu identifizieren und zu verhindern. Zudem implementieren wir Firewalls, Antivirus-Software, Intrusion-Detection-Systeme und führen regelmäßige Penetrationstests durch.",
     "category": "security",
@@ -65,7 +71,9 @@
     "alt_questions": [
       "Können Sie uns in die Cloud umziehen?",
       "Helfen Sie beim Wechsel zu AWS oder Azure?",
-      "Unterstützen Sie bei der Cloud-Migration?"
+      "Unterstützen Sie bei der Cloud-Migration?",
+      "Do you offer cloud migration services?",
+      "Can you help us migrate to the cloud?"
     ],
     "answer": "Ja, wir bieten umfassende Cloud-Migrationsdienste an, die alles von der Planung und Bewertung bis hin zur Durchführung der Migration und der anschließenden Optimierung und Verwaltung Ihrer Cloud-Umgebung umfassen. Wir arbeiten mit führenden Cloud-Anbietern wie AWS, Microsoft Azure und Google Cloud.",
     "category": "cloud",
@@ -86,7 +94,9 @@
     "alt_questions": [
       "Helfen Sie bei DSGVO-Compliance?",
       "Wie unterstützen Sie uns beim Datenschutz?",
-      "Was machen Sie für die Einhaltung von Datenschutzgesetzen?"
+      "Was machen Sie für die Einhaltung von Datenschutzgesetzen?",
+      "How do you help with GDPR compliance?",
+      "Can you support our data protection requirements?"
     ],
     "answer": "Wir helfen Ihnen, die relevanten Datenschutzvorschriften wie die DSGVO (Datenschutz-Grundverordnung) einzuhalten, indem wir sichere Datenverarbeitungspraktiken implementieren, Ihre IT-Systeme regelmäßig auf Sicherheitslücken überprüfen und Richtlinien für die Datenspeicherung und Datenverarbeitung entwickeln.",
     "category": "compliance",
@@ -105,7 +115,9 @@
     "alt_questions": [
       "Wie stellen Sie sicher, dass meine Systeme nicht ausfallen?",
       "Was passiert bei einem IT-Systemausfall?",
-      "Bieten Sie Backup und Disaster Recovery an?"
+      "Bieten Sie Backup und Disaster Recovery an?",
+      "How do you ensure IT system resilience?",
+      "Do you offer backup and disaster recovery?"
     ],
     "answer": "Wir implementieren Redundanzlösungen, regelmäßige Backups, Monitoring-Systeme und Notfallwiederherstellungspläne, um die Ausfallsicherheit Ihrer IT-Systeme zu gewährleisten. Unsere Lösungen sind darauf ausgelegt, Ihre Geschäftskontinuität zu gewährleisten, auch im Falle eines unerwarteten Ausfalls.",
     "category": "operations",
@@ -125,7 +137,9 @@
     "alt_questions": [
       "Entwickeln Sie individuelle Software für uns?",
       "Können Sie eine Anwendung speziell für uns programmieren?",
-      "Bieten Sie kundenspezifische Softwareentwicklung an?"
+      "Bieten Sie kundenspezifische Softwareentwicklung an?",
+      "Can you develop custom software for us?",
+      "Do you build bespoke applications?"
     ],
     "answer": "Ja, wir bieten maßgeschneiderte Softwareentwicklungsdienste an, die auf die spezifischen Anforderungen Ihres Unternehmens zugeschnitten sind. Unser Entwicklungsteam arbeitet eng mit Ihnen zusammen, um Lösungen zu entwerfen, die Ihre Geschäftsprozesse effizienter und effektiver machen.",
     "category": "software-development",
@@ -144,7 +158,9 @@
     "alt_questions": [
       "Was passiert bei einer IT-Beratung?",
       "Wie sieht der Beratungsprozess bei Ihnen aus?",
-      "Wie gehen Sie bei einer IT-Strategieberatung vor?"
+      "Wie gehen Sie bei einer IT-Strategieberatung vor?",
+      "How does an IT consulting engagement work?",
+      "What is your IT consulting process?"
     ],
     "answer": "Eine IT-Beratung beginnt mit einer umfassenden Analyse Ihrer aktuellen IT-Infrastruktur und Prozesse. Danach erarbeiten wir gemeinsam eine maßgeschneiderte Strategie, die Ihre Geschäftsziele unterstützt und Ihre IT-Investitionen maximiert. Wir begleiten Sie durch den gesamten Prozess und stellen sicher, dass die empfohlene Strategie erfolgreich umgesetzt wird.",
     "category": "consulting",
@@ -163,7 +179,9 @@
     "alt_questions": [
       "Für welche Branchen sind Ihre Lösungen geeignet?",
       "Arbeiten Sie auch mit Gesundheits- oder Finanzunternehmen?",
-      "In welchen Sektoren sind Sie tätig?"
+      "In welchen Sektoren sind Sie tätig?",
+      "Which industries do you serve?",
+      "Do you work with healthcare or finance companies?"
     ],
     "answer": "Wir bedienen eine Vielzahl von Branchen, darunter Gesundheitswesen, Finanzen, Bildung, Fertigung, Einzelhandel und öffentliche Verwaltung. Unsere IT-Lösungen sind flexibel und skalierbar, um den spezifischen Anforderungen jeder Branche gerecht zu werden.",
     "category": "industries",
@@ -183,7 +201,9 @@
     "alt_questions": [
       "Was sind Ihre Preise?",
       "Wie teuer ist Ihr IT-Support?",
-      "Gibt es Pauschalpreise oder Stundensätze?"
+      "Gibt es Pauschalpreise oder Stundensätze?",
+      "How much do your services cost?",
+      "What are your pricing models?"
     ],
     "answer": "Die Kosten unserer Dienstleistungen variieren je nach Umfang und Art der benötigten Services. Wir bieten flexible Preismodelle an, die auf Stundenbasis, als Pauschalgebühr oder im Rahmen von Serviceverträgen berechnet werden können. Gerne erstellen wir Ihnen ein individuelles Angebot, das auf Ihre Bedürfnisse zugeschnitten ist.",
     "category": "pricing",
@@ -195,6 +215,119 @@
       "service-contract",
       "offer",
       "angebot"
+    ],
+    "source": "data/faq.txt"
+  },
+  {
+    "id": "faq-11-sla-response-times",
+    "question": "Welche Reaktionszeiten garantieren Sie?",
+    "alt_questions": [
+      "Wie schnell reagieren Sie auf Störungen?",
+      "Was ist Ihre SLA-Vereinbarung?",
+      "Wie lange muss ich auf Hilfe warten?",
+      "What are your SLA response times?",
+      "How fast do you respond to incidents?"
+    ],
+    "answer": "Wir garantieren je nach Serviceklasse Reaktionszeiten von 1 Stunde (kritisch), 4 Stunden (hoch) und 8 Stunden (normal). Für kritische Systeme bieten wir einen 24/7-Bereitschaftsdienst. Die genauen SLA-Bedingungen werden individuell im Servicevertrag vereinbart.",
+    "category": "support",
+    "tags": [
+      "sla",
+      "reaktionszeit",
+      "response-time",
+      "incident",
+      "servicevertrag",
+      "bereitschaftsdienst"
+    ],
+    "source": "data/faq.txt"
+  },
+  {
+    "id": "faq-12-remote-work-vpn",
+    "question": "Unterstützen Sie Remote-Arbeit und VPN-Lösungen?",
+    "alt_questions": [
+      "Können Sie uns mit Homeoffice-IT helfen?",
+      "Richten Sie VPN für unser Team ein?",
+      "Wie können wir sicher von zu Hause arbeiten?",
+      "Do you support remote work and VPN?",
+      "Can you set up home office IT infrastructure?"
+    ],
+    "answer": "Ja, wir unterstützen Remote-Arbeit durch sichere VPN-Lösungen, Cloud-basierte Collaboration-Tools und Endpoint-Security für Heimarbeitsplätze. Wir konfigurieren und warten Ihre Remote-Zugänge und stellen sicher, dass Ihre Mitarbeiter von überall sicher auf Unternehmensressourcen zugreifen können.",
+    "category": "services",
+    "tags": [
+      "remote-work",
+      "vpn",
+      "homeoffice",
+      "collaboration",
+      "endpoint-security",
+      "fernzugriff"
+    ],
+    "source": "data/faq.txt"
+  },
+  {
+    "id": "faq-13-onboarding",
+    "question": "Wie funktioniert der Einstieg mit Ihren Dienstleistungen?",
+    "alt_questions": [
+      "Wie starte ich mit Ihrer IT-Betreuung?",
+      "Was passiert nach Vertragsabschluss?",
+      "Wie lange dauert das Onboarding?",
+      "How do I get started with your services?",
+      "What is the onboarding process?"
+    ],
+    "answer": "Nach Vertragsabschluss führen wir eine Bestandsaufnahme Ihrer IT-Infrastruktur durch und erstellen einen Einführungsplan. Unser Team übernimmt schrittweise die Betreuung Ihrer Systeme. Der gesamte Onboarding-Prozess dauert typischerweise 2–4 Wochen, abhängig von der Größe Ihrer Umgebung.",
+    "category": "consulting",
+    "tags": [
+      "onboarding",
+      "einstieg",
+      "vertragsabschluss",
+      "getting-started",
+      "bestandsaufnahme",
+      "einführung"
+    ],
+    "source": "data/faq.txt"
+  },
+  {
+    "id": "faq-14-certifications",
+    "question": "Welche Zertifizierungen und Qualifikationen haben Sie?",
+    "alt_questions": [
+      "Sind Sie ISO 27001 zertifiziert?",
+      "Welche Qualitätsnachweise können Sie vorweisen?",
+      "Haben Sie Partnerschaften mit Microsoft oder AWS?",
+      "Do you have ISO 27001 or other certifications?",
+      "What quality certifications do you hold?"
+    ],
+    "answer": "Wir halten relevante Branchenzertifizierungen, darunter ISO 27001 für Informationssicherheit sowie Partnerzertifizierungen von Microsoft, AWS und Cisco. Unsere Techniker verfügen über aktuelle Fachzertifikate, die regelmäßig erneuert werden, um den neuesten Technologiestandards zu entsprechen.",
+    "category": "compliance",
+    "tags": [
+      "iso-27001",
+      "zertifizierung",
+      "certification",
+      "qualifikation",
+      "microsoft",
+      "aws",
+      "cisco",
+      "partner"
+    ],
+    "source": "data/faq.txt"
+  },
+  {
+    "id": "faq-15-training",
+    "question": "Bieten Sie IT-Schulungen für Mitarbeiter an?",
+    "alt_questions": [
+      "Können Sie unsere Mitarbeiter in IT-Sicherheit schulen?",
+      "Gibt es Trainings oder Workshops bei Ihnen?",
+      "Wie sensibilisieren Sie Mitarbeiter für Cybersicherheit?",
+      "Do you offer IT security training for employees?",
+      "Can you train our staff on cybersecurity awareness?"
+    ],
+    "answer": "Ja, wir bieten maßgeschneiderte IT-Schulungen und Sicherheitsbewusstseinstrainings für Mitarbeiter an. Die Themen umfassen Phishing-Erkennung, sichere Passwortpraxis, Datenschutz und den sicheren Umgang mit Unternehmensdaten. Schulungen werden vor Ort oder als Online-Workshop durchgeführt.",
+    "category": "services",
+    "tags": [
+      "training",
+      "schulung",
+      "security-awareness",
+      "phishing",
+      "workshop",
+      "datenschutz",
+      "mitarbeiterschulung"
     ],
     "source": "data/faq.txt"
   }

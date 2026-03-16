@@ -14,9 +14,10 @@ def test_repository_loads_real_faq_dataset() -> None:
 
     entries = repository.list_entries()
 
-    assert len(entries) == 10
+    assert len(entries) == 15
     assert entries[0].id == "faq-01-services-overview"
     assert repository.get_by_id("faq-10-pricing") is not None
+    assert repository.get_by_id("faq-15-training") is not None
     assert entries[0].source == "data/faq.txt"
     assert "Cloud-Lösungen" in entries[0].answer
 
@@ -75,4 +76,4 @@ def test_repository_from_settings_resolves_relative_paths_from_project_root(
 
     entries = repository.list_entries()
 
-    assert len(entries) == 10
+    assert len(entries) == 15
