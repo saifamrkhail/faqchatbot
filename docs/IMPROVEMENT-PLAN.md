@@ -166,31 +166,27 @@ overrides are present.
 
 ---
 
-## Remaining Improvements (not yet implemented)
+## Remaining Improvements
 
-### P5 — FAQ Data Quality and Coverage (MEDIUM)
+### P5 — FAQ Data Quality and Coverage ✅
 
-**Improvements**:
-1. Add more FAQ entries covering edge cases from real user queries
-2. Consider bilingual FAQ: English `alt_questions` for multilingual support
-   (`nomic-embed-text-v2-moe` is multilingual)
-3. Normalize FAQ answer length: very long answers (>300 chars) should be split into
-   sub-FAQs to reduce hallucination risk during generation
+- Expanded dataset from 10 → 15 entries (added SLA response times, remote work/VPN,
+  onboarding, certifications, employee training)
+- Added 2 English `alt_questions` to every entry for multilingual support
+- All answers kept under 310 chars (prompt template truncates at 200 anyway)
+- **Action required**: re-run `make ingest` to load new entries into Qdrant
 
-### P6 — Infrastructure
+### P6 — Infrastructure ✅
 
-**Model pull via HTTP API** (more reliable than `docker exec ollama pull`):
-```bash
-curl -X POST http://localhost:11434/api/pull \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"qwen3.5:9b","stream":false}' --max-time 600
-```
+- `scripts/pull_host_ollama_models.sh`: pulls both required models on host Ollama via CLI
+- Makefile supports `USE_EXTERNAL_QDRANT=true` for reusing an existing Qdrant instance
+- `docker-compose.yml`: Qdrant URL now overridable via `FAQ_CHATBOT_QDRANT_URL` env var
 
-### P7 — Soft Threshold Zone (LOW priority, diminishing returns post-P2a)
+### P7 — Soft Threshold Zone (intentionally deferred)
 
-With alt_questions in place and 100% paraphrase recall, the soft-zone logic (P2c from
-original plan) adds complexity without measurable benefit. Consider only if new FAQ entries
-show paraphrase gaps.
+With alt_questions in place and 100% paraphrase recall, the soft-zone logic adds complexity
+without measurable benefit. Revisit only if new FAQ entries show paraphrase gaps after
+re-evaluation.
 
 ---
 
