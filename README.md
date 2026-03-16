@@ -10,10 +10,10 @@ The bot answers questions **only from FAQ context** and returns a deterministic 
 
 ### Prerequisites
 - **Docker** & **Docker Compose** (v2.0+)
+- **Ollama** installed and running on the **host machine**
+- Host Ollama must have `qwen3.5:9b` and `nomic-embed-text-v2-moe` available
+- Internet connection to pull models on first run
 - **Python 3.11+** and **uv** for local development
-- **Ollama** latest version
-- qwen3.5:9b and nomic-embed-text-v2-moe models (pull these models with ollama)
-- Internet connection (first run downloads models)
 
 ---
 
@@ -24,7 +24,8 @@ The bot answers questions **only from FAQ context** and returns a deterministic 
 Make sure you have:
 - **Docker & Docker Compose** (v2.0+)
 - ~5 GB free disk space
-- Internet connection (first run only)
+- **Ollama running on the host machine**
+- Internet connection (first model pull only)
 
 ### **Step 1: Clone & Navigate**
 
@@ -33,42 +34,44 @@ git clone https://github.com/saifamrkhail/faqchatbot.git
 cd faqchatbot
 ```
 
-### **Step 2: Start Core Services**
+### **Step 2: Pull the Required Ollama Models on the Host**
 
 **Open Terminal 1:**
-
-```bash
-make up
-```
-
-**What happens:**
-- Starts **Ollama** (embeddings & generation engine) on `http://localhost:11434`
-- Starts **Qdrant** (vector database) on `http://localhost:6333`
-- Runs in **background** (-d flag) so you can use Terminal 2
-
-**Wait 10-15 seconds** for services to be ready. You'll see confirmation messages.
-
-### **Step 3: Pull AI Models**
-
-**Open Terminal 2** (while Terminal 1 keeps services running):
 
 ```bash
 make pull-models
 ```
 
 **What happens:**
-- Downloads `nomic-embed-text-v2-moe` (embedding model)
-- Downloads `qwen3.5:9b` (generation model)
-- Stores them inside the Ollama container
+- Runs `ollama pull qwen3.5:9b` on the host machine
+- Runs `ollama pull nomic-embed-text-v2-moe` on the host machine
+- Verifies the required models against the host Ollama instance
 
-⏱️ **This takes 2–5 minutes on first run** (~2 GB download)
+The helper script is [`scripts/pull_host_ollama_models.sh`](/home/saif/faqchatbot-codex/scripts/pull_host_ollama_models.sh).
+
+⏱️ **This takes 2-5 minutes on first run** (~2 GB download)
 
 **Verify models installed:**
 ```bash
 make models
 ```
 
-You should see both models listed.
+You should see both models listed on the host Ollama instance.
+
+### **Step 3: Start Qdrant in Docker**
+
+**Open Terminal 2:**
+
+```bash
+make up
+```
+
+**What happens:**
+- Starts **Qdrant** (vector database) on `http://localhost:6333`
+- Leaves **Ollama** on the host machine to avoid a second Ollama container
+- Runs in **background** so you can keep using Terminal 2
+
+**Wait 10-15 seconds** for Qdrant to become healthy.
 
 ### **Step 4: Ingest FAQ Data**
 
@@ -78,7 +81,7 @@ make ingest
 
 **What happens:**
 - Loads 10 sample German FAQ entries from `data/faq.json`
-- Generates embeddings for each entry (semantic search vectors)
+- Generates embeddings through **host Ollama**
 - Stores them in Qdrant (ready to be searched)
 
 **Expected output:**
@@ -96,7 +99,9 @@ make chat
 ```
 
 **What happens:**
-- Opens an interactive terminal chat loop
+- Starts the app inside Docker
+- Connects to **Qdrant in Docker**
+- Connects to **Ollama on the host machine**
 - You can now ask questions in German
 
 **Example interaction:**
@@ -123,11 +128,11 @@ Tschüss!
 
 | Command | Purpose |
 |---------|---------|
-| `make up` | Start Ollama, Qdrant, App |
-| `make pull-models` | Download AI models (~2-5 min) |
+| `make pull-models` | Pull `qwen3.5:9b` and `nomic-embed-text-v2-moe` on host Ollama |
+| `make up` | Start Qdrant in Docker |
 | `make ingest` | Load FAQ data into Qdrant |
-| `make chat` | Run interactive chatbot |
-| `make test` | Run 149 tests |
+| `make chat` | Run the app container against host Ollama |
+| `make test` | Run the test suite |
 | `make logs` | View app logs |
 | `make ps` | Show container status |
 | `make down` | Stop all services |
@@ -139,7 +144,8 @@ Tschüss!
 
 | Problem | Solution |
 |---------|----------|
-| **Models not found (404)** | Run `make pull-models` in Terminal 2 |
+| **Models not found (404)** | Run `make pull-models` on the host machine |
+| **App container cannot reach Ollama** | Verify `curl http://localhost:11434/api/tags` works on the host. On Linux, restart Ollama with `OLLAMA_HOST=0.0.0.0:11434 ollama serve` if needed. |
 | **Chatbot won't take input** | Make sure you're in Terminal 2, not logged into container |
 | **"Port 6333 already in use"** | Run `make clean && make up` |
 | **Qdrant connection refused** | Wait longer for services (check `make logs-qdrant`) |
@@ -156,11 +162,11 @@ To run the chatbot **locally** (not in Docker):
 # 1. Install dependencies
 uv sync
 
-# 2. Start just Ollama & Qdrant in Docker
-docker compose up -d ollama qdrant
-
-# 3. Pull models (same as Step 3 above)
+# 2. Make sure Ollama is running on the host
 make pull-models
+
+# 3. Start Qdrant in Docker
+make up
 
 # 4. Ingest data
 make ingest-local
@@ -179,11 +185,11 @@ make run-local
 ```bash
 # Terminal 1
 git clone <repo>
-cd faqchatbot-claude
+cd faqchatbot
+make pull-models
 make up
 
-# Terminal 2 (while Terminal 1 runs)
-make pull-models      # Wait ~3 minutes for downloads
+# Terminal 2
 make ingest          # ~30 seconds
 make chat            # Start chatting!
 ```
@@ -250,12 +256,13 @@ app/
   └── ui/                # Terminal chat interface
 
 scripts/
-  └── ingest.py          # Standalone ingestion script
+  ├── ingest.py          # Standalone ingestion script
+  └── pull_host_ollama_models.sh  # Host-side Ollama model bootstrap
 
 data/
   └── faq.json           # Sample FAQ (10 German entries)
 
-tests/                   # 149 tests (all passing ✓)
+tests/                   # Automated test suite
 docs/                    # Detailed documentation
 ```
 
@@ -276,7 +283,7 @@ pytest tests/test_chat_service.py    # Phase 7
 pytest tests/test_ui*.py             # Phase 8
 ```
 
-**Status**: 149 tests passing ✓
+**Status**: run `make test` for the current verified test suite.
 
 ---
 
@@ -298,10 +305,17 @@ pytest tests/test_ui*.py             # Phase 8
 Set via `FAQ_CHATBOT_*` environment variables:
 
 ```bash
+# Local runtime
 FAQ_CHATBOT_OLLAMA_BASE_URL=http://localhost:11434
+FAQ_CHATBOT_QDRANT_URL=http://localhost:6333
+
+# Docker app container
+# FAQ_CHATBOT_OLLAMA_BASE_URL=http://host.docker.internal:11434
+# FAQ_CHATBOT_QDRANT_URL=http://qdrant:6333
+
+# Required models on host Ollama
 FAQ_CHATBOT_OLLAMA_GENERATE_MODEL=qwen3.5:9b
 FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL=nomic-embed-text-v2-moe
-FAQ_CHATBOT_QDRANT_URL=http://localhost:6333
 FAQ_CHATBOT_TOP_K=3
 FAQ_CHATBOT_SCORE_THRESHOLD=0.50
 FAQ_CHATBOT_FALLBACK_MESSAGE="Leider konnte ich Ihre Frage nicht verstehen."
@@ -315,9 +329,9 @@ See `.env.example` for defaults.
 
 | Problem | Solution |
 |---------|----------|
-| Ollama timeout | `docker compose logs ollama` / `docker compose restart ollama` |
+| Host Ollama not reachable | `curl http://localhost:11434/api/tags` and restart Ollama on the host |
 | Qdrant refused | `curl http://localhost:6333/health` / restart services |
-| Model not found | `docker exec faqchatbot-claude-ollama-1 ollama list` |
+| Model not found | `make pull-models` or `OLLAMA_HOST=http://localhost:11434 ollama list` |
 | Local deps fail | `uv sync --force` |
 
 ---
@@ -344,7 +358,7 @@ See `.env.example` for defaults.
 - Chat Application Service
 - Terminal UI (plain terminal interface)
 
-149 tests passing. Production-ready.
+Deployment target: app in Docker, Qdrant in Docker, Ollama on the host machine.
 
 ---
 

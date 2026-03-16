@@ -1,4 +1,7 @@
-.PHONY: help build up down logs ingest run test clean rebuild rebuild-clean
+.PHONY: help build up up-all up-bg down ps logs logs-qdrant rebuild \
+	pull-models ingest chat chat-bg sync test eval eval-category \
+	grid-search grid-search-full test-watch test-coverage run-local \
+	ingest-local clean clean-hard clean-py health models shell-app docs
 
 # Default target
 .DEFAULT_GOAL := help
@@ -8,6 +11,8 @@ CYAN := \033[0;36m
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 NC := \033[0m # No Color
+HOST_OLLAMA_URL ?= http://localhost:11434
+COMPOSE_APP_ENV := FAQ_CHATBOT_OLLAMA_BASE_URL=$(HOST_OLLAMA_URL)
 
 # Help target
 help:
@@ -16,20 +21,19 @@ help:
 	@echo "$(CYAN)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Terminal 1:$(NC)"
-	@echo "  $$ make up              # Start Ollama, Qdrant, App"
+	@echo "  $$ make pull-models     # Pull required models on host Ollama"
+	@echo "  $$ make up              # Start Qdrant in Docker"
 	@echo ""
 	@echo "$(YELLOW)Terminal 2:$(NC)"
-	@echo "  $$ make pull-models     # Download AI models (~3 min)"
 	@echo "  $$ make ingest          # Load FAQ data"
 	@echo "  $$ make chat            # Start chatting!"
 	@echo ""
 	@echo "$(GREEN)Docker Commands:$(NC)"
-	@echo "  make up              - Start services (Ollama, Qdrant) in background"
-	@echo "  make up-all          - Start services + app logs (logs only, no input)"
-	@echo "  make pull-models     - Pull Ollama models into container"
+	@echo "  make up              - Start Qdrant in background"
+	@echo "  make up-all          - Start Qdrant + app logs (host Ollama required)"
+	@echo "  make pull-models     - Pull required models on host Ollama"
 	@echo "  make down            - Stop all services"
 	@echo "  make logs            - View app logs (live)"
-	@echo "  make logs-ollama     - View Ollama logs"
 	@echo "  make logs-qdrant     - View Qdrant logs"
 	@echo "  make ps              - Show container status"
 	@echo "  make rebuild         - Rebuild app image"
@@ -60,17 +64,19 @@ build:
 	docker compose build
 
 up:
-	@echo "$(CYAN)Starting services (Ollama, Qdrant)...$(NC)"
-	@echo "$(YELLOW)Run 'make pull-models' in another terminal$(NC)"
-	docker compose up -d ollama qdrant
+	@echo "$(CYAN)Starting Qdrant in Docker...$(NC)"
+	@echo "$(YELLOW)Host Ollama must already be running at $(HOST_OLLAMA_URL)$(NC)"
+	docker compose up -d qdrant
 
 up-all:
-	@echo "$(CYAN)Starting all services (Ollama, Qdrant, App logs)...$(NC)"
-	docker compose up --build app
+	@echo "$(CYAN)Starting Qdrant and app logs...$(NC)"
+	@echo "$(YELLOW)Host Ollama must already be running at $(HOST_OLLAMA_URL)$(NC)"
+	$(COMPOSE_APP_ENV) docker compose up --build qdrant app
 
 up-bg:
-	@echo "$(CYAN)Starting all services in background...$(NC)"
-	docker compose up -d
+	@echo "$(CYAN)Starting Qdrant and app in background...$(NC)"
+	@echo "$(YELLOW)Host Ollama must already be running at $(HOST_OLLAMA_URL)$(NC)"
+	$(COMPOSE_APP_ENV) docker compose up -d --build qdrant app
 
 down:
 	@echo "$(CYAN)Stopping all services...$(NC)"
@@ -81,9 +87,6 @@ ps:
 
 logs:
 	docker compose logs -f app
-
-logs-ollama:
-	docker compose logs -f ollama
 
 logs-qdrant:
 	docker compose logs -f qdrant
@@ -97,23 +100,22 @@ rebuild:
 # ============================================================================
 
 pull-models:
-	@echo "$(CYAN)Pulling Ollama models into container...$(NC)"
-	docker compose exec ollama ollama pull nomic-embed-text-v2-moe
-	docker compose exec ollama ollama pull qwen3.5:9b
-	@echo "$(GREEN)Models pulled successfully$(NC)"
+	@echo "$(CYAN)Pulling required models on host Ollama at $(HOST_OLLAMA_URL)...$(NC)"
+	OLLAMA_HOST=$(HOST_OLLAMA_URL) ./scripts/pull_host_ollama_models.sh
+	@echo "$(GREEN)Host Ollama models ready$(NC)"
 	@make models
 
 ingest:
 	@echo "$(CYAN)Ingesting FAQ data...$(NC)"
-	docker compose run --rm --build ingest
+	$(COMPOSE_APP_ENV) docker compose run --rm --build ingest
 
 chat:
 	@echo "$(CYAN)Starting chatbot...$(NC)"
-	docker compose run --rm --build app
+	$(COMPOSE_APP_ENV) docker compose run --rm --build app
 
 chat-bg:
 	@echo "$(CYAN)Starting chatbot in background...$(NC)"
-	docker compose up -d app
+	$(COMPOSE_APP_ENV) docker compose up -d --build app
 
 # ============================================================================
 # Local Development (no Docker)
@@ -172,7 +174,7 @@ clean:
 clean-hard: clean
 	@echo "$(YELLOW)Removing all images...$(NC)"
 	docker compose rm -f
-	docker rmi $$(docker images -q faqchatbot-claude*) 2>/dev/null || true
+	docker rmi $$(docker images -q faqchatbot*) 2>/dev/null || true
 	@echo "$(GREEN)Hard clean complete$(NC)"
 
 clean-py:
@@ -189,20 +191,16 @@ clean-py:
 
 health:
 	@echo "$(CYAN)Checking service health...$(NC)"
-	@echo "Ollama: $$(curl -s http://localhost:11434/api/tags > /dev/null && echo '✓ OK' || echo '✗ FAIL')"
+	@echo "Host Ollama: $$(curl -s $(HOST_OLLAMA_URL)/api/tags > /dev/null && echo '✓ OK' || echo '✗ FAIL')"
 	@echo "Qdrant: $$(curl -s http://localhost:6333/health > /dev/null && echo '✓ OK' || echo '✗ FAIL')"
 
 models:
-	@echo "$(CYAN)Checking Ollama models...$(NC)"
-	docker exec faqchatbot-claude-ollama-1 ollama list 2>/dev/null || echo "Ollama not running"
+	@echo "$(CYAN)Checking host Ollama models...$(NC)"
+	@OLLAMA_HOST=$(HOST_OLLAMA_URL) ollama list 2>/dev/null || echo "Host Ollama not running or not installed"
 
 shell-app:
 	@echo "$(CYAN)Opening shell in app container...$(NC)"
 	docker compose exec app /bin/bash
-
-shell-ollama:
-	@echo "$(CYAN)Opening shell in Ollama container...$(NC)"
-	docker compose exec ollama /bin/sh
 
 # ============================================================================
 # Documentation
