@@ -110,7 +110,7 @@ class _RewriteCandidate:
 
 @dataclass(slots=True)
 class Retriever:
-    """Semantic FAQ retrieval from vector store."""
+    """Embed a question, search Qdrant, rerank, and optionally rewrite borderline queries."""
 
     ollama_client: OllamaClient
     qdrant_client: QdrantClient
@@ -141,10 +141,7 @@ class Retriever:
         )
 
     def retrieve(self, question: str) -> RetrievalResult:
-        """Find the best FAQ match for a user question.
-
-        Returns RetrievalResult with matched_entry=None if below threshold.
-        """
+        """Find the best FAQ match for a user question."""
 
         try:
             normalized_question = question.strip()
@@ -165,6 +162,8 @@ class Retriever:
         )
 
     def _retrieve_once(self, question: str) -> RetrievalResult:
+        """Run one retrieval pass before any optional query rewrites."""
+
         vector = self._embed_question(question)
         search_results = self._search_vector_store(vector)
         reranked_results = self._rerank_results(question, search_results)
@@ -204,6 +203,8 @@ class Retriever:
         question: str,
         results: list[tuple[FAQEntry, float]],
     ) -> list[tuple[FAQEntry, float]]:
+        """Blend semantic similarity with a capped lexical overlap bonus."""
+
         if not results:
             return results
 
@@ -365,10 +366,7 @@ class Retriever:
     def _evaluate_threshold(
         self, results: list[tuple[FAQEntry, float]]
     ) -> RetrievalResult:
-        """Evaluate search results against threshold.
-
-        Returns matched_entry=None if no results or score below threshold.
-        """
+        """Decide whether the top result is strong enough to trust."""
 
         if not results:
             return RetrievalResult(
@@ -378,6 +376,7 @@ class Retriever:
                 retrieved=False,
             )
 
+        # Only the top hit decides whether generation may use FAQ context.
         best_entry, best_score = results[0]
 
         return RetrievalResult(
@@ -389,6 +388,8 @@ class Retriever:
 
 
 def _compute_lexical_bonus(query_terms: set[str], entry: FAQEntry) -> float:
+    """Reward direct term overlap without overwhelming the semantic score."""
+
     if not query_terms:
         return 0.0
 
@@ -416,6 +417,8 @@ def _compute_lexical_bonus(query_terms: set[str], entry: FAQEntry) -> float:
 
 
 def _extract_lexical_terms(text: str) -> set[str]:
+    """Extract coarse lexical terms used for reranking and rewrite gating."""
+
     normalized = text.casefold().replace("/", " ")
     return {
         term
@@ -425,6 +428,8 @@ def _extract_lexical_terms(text: str) -> set[str]:
 
 
 def _build_query_rewrite_prompt(question: str, *, max_variants: int) -> str:
+    """Build the prompt that asks the model for retrieval-friendly rewrites."""
+
     return (
         "Du formulierst Suchanfragen fuer einen FAQ-Retriever um.\n"
         "Ziel: dieselbe Kundenfrage mit alternativen Suchbegriffen auffindbar machen.\n\n"
@@ -445,6 +450,8 @@ def _parse_query_rewrites(
     *,
     max_variants: int,
 ) -> list[str]:
+    """Parse and deduplicate rewrite candidates from the model response."""
+
     normalized_original = _normalize_query_text(original_question)
     seen: set[str] = {normalized_original}
     rewrites: list[str] = []
@@ -476,4 +483,6 @@ def _parse_query_rewrites(
 
 
 def _normalize_query_text(value: str) -> str:
+    """Normalize rewrite candidates for stable equality checks."""
+
     return " ".join(value.casefold().split())

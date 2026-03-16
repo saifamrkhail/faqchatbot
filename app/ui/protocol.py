@@ -22,23 +22,26 @@ class ChatResponse:
 
 @runtime_checkable
 class ChatServiceProtocol(Protocol):
-    """Contract that the UI expects from any chat backend."""
+    """Minimal contract used by the terminal chat loop."""
 
     def ask(self, question: str) -> ChatResponse: ...
 
 
 @dataclass(slots=True)
 class ChatServiceAdapter:
-    """Adapter wrapping the synchronous core ChatService."""
+    """Bridge the core chat service to the smaller terminal-UI response shape."""
 
     chat_service: ChatService
 
     def ask(self, question: str) -> ChatResponse:
+        """Run one synchronous chat turn and map it for the UI layer."""
+
         response = self.chat_service.handle_question(question)
         return _to_ui_response(response)
 
     def ask_streaming(self, question: str) -> Iterator[str]:
         """Stream answer tokens from the core chat service."""
+
         yield from self.chat_service.handle_question_streaming(question)
 
 
@@ -62,6 +65,8 @@ class StubChatService:
 
 
 def _to_ui_response(response: DomainChatResponse) -> ChatResponse:
+    """Shrink the domain response down to the fields the UI renders."""
+
     return ChatResponse(
         answer=response.answer,
         source_faq=response.source_faq_id,

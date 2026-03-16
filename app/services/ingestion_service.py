@@ -34,7 +34,7 @@ class IngestionResult:
 
 @dataclass(slots=True)
 class IngestionService:
-    """Load FAQ entries, generate embeddings, and upsert them into Qdrant."""
+    """Offline write path from FAQ data into the vector store."""
 
     repository: FAQRepository
     ollama_client: OllamaClient
@@ -51,7 +51,7 @@ class IngestionService:
         )
 
     def ingest(self) -> IngestionResult:
-        """Ingest the configured FAQ dataset into Qdrant."""
+        """Run the full FAQ -> embeddings -> Qdrant ingestion flow."""
 
         try:
             entries = self.repository.list_entries()
@@ -82,6 +82,8 @@ class IngestionService:
         )
 
     def _build_points(self, entries: list[FAQEntry]) -> list[QdrantPoint]:
+        """Convert FAQ entries into Qdrant points with consistent embeddings."""
+
         points: list[QdrantPoint] = []
         expected_vector_size: int | None = None
 
@@ -94,7 +96,7 @@ class IngestionService:
                     "Embedding dimensions are inconsistent across FAQ entries"
                 )
 
-            # Convert string ID to UUID string (deterministic, valid Qdrant ID format)
+            # Derive a deterministic UUID so repeated ingestions update the same point.
             point_id_uuid = uuid.UUID(hashlib.md5(entry.id.encode()).hexdigest())
             points.append(
                 QdrantPoint(
@@ -106,6 +108,8 @@ class IngestionService:
         return points
 
     def _build_embedding_text(self, entry: FAQEntry) -> str:
+        """Compose the text used to embed an FAQ, including alternate phrasings."""
+
         parts = [entry.question]
         if entry.alt_questions:
             parts.extend(entry.alt_questions)
