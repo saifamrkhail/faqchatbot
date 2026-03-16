@@ -12,7 +12,7 @@ class FAQValidationError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class FAQEntry:
-    """Validated FAQ entry consumed by the application."""
+    """Validated FAQ record shared across storage, retrieval, and prompting."""
 
     id: str
     question: str
@@ -29,7 +29,7 @@ class FAQEntry:
         *,
         record_index: int | None = None,
     ) -> "FAQEntry":
-        """Build a validated FAQ entry from a raw mapping."""
+        """Convert raw JSON into the canonical in-memory FAQ shape."""
 
         if not isinstance(raw, Mapping):
             raise FAQValidationError(f"{_record_label(record_index)} must be an object")
@@ -81,6 +81,8 @@ def _require_string(
     *,
     record_index: int | None,
 ) -> str:
+    """Validate required text fields early so later layers stay type-safe."""
+
     if field_name not in raw:
         raise FAQValidationError(
             f"{_record_label(record_index)} is missing required field '{field_name}'"
@@ -106,6 +108,8 @@ def _normalize_optional_string(
     *,
     record_index: int | None,
 ) -> str | None:
+    """Normalize optional text fields while rejecting empty placeholders."""
+
     if value is None:
         return None
     if not isinstance(value, str):
@@ -121,6 +125,8 @@ def _normalize_optional_string(
 
 
 def _normalize_tags(value: Any, *, record_index: int | None) -> tuple[str, ...]:
+    """Convert tag lists to an immutable, validated tuple."""
+
     if value is None:
         return ()
     if not isinstance(value, list):
@@ -164,6 +170,8 @@ def _normalize_alt_questions(value: Any, *, record_index: int | None) -> tuple[s
 
 
 def _record_label(record_index: int | None) -> str:
+    """Render stable record labels for validation errors."""
+
     if record_index is None:
         return "FAQ record"
     return f"FAQ record {record_index}"

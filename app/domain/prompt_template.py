@@ -9,17 +9,12 @@ from app.domain.faq import FAQEntry
 
 @dataclass(frozen=True, slots=True)
 class PromptTemplate:
-    """Template for building grounded answer generation prompts."""
+    """Single place where grounded and general-chat prompt contracts live."""
 
     fallback_message: str = "Leider konnte ich Ihre Frage nicht verstehen."
 
     def build_general(self, question: str) -> str:
-        """Build a free-form prompt for general conversation without FAQ context.
-
-        Used when no FAQ entry meets the relevance threshold. The LLM may respond
-        freely for general conversation but must use the fallback message for
-        company-specific questions it cannot answer.
-        """
+        """Build the prompt used when retrieval found no trusted FAQ match."""
 
         question_normalized = question.strip()
         if not question_normalized:
@@ -41,10 +36,7 @@ class PromptTemplate:
         )
 
     def build(self, question: str, faq_entry: FAQEntry) -> str:
-        """Build a grounded prompt from a question and FAQ entry.
-
-        Returns a prompt string suitable for answer generation.
-        """
+        """Build the concrete prompt for one question and one FAQ match."""
 
         question_normalized = question.strip()
         if not question_normalized:

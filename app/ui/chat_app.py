@@ -11,6 +11,8 @@ _SEP = "─" * 60
 
 
 def run_chat_loop(chat_service: ChatServiceProtocol, *, title: str = "faqchatbot") -> None:
+    """Run the blocking terminal chat loop used by the CLI ``--tui`` mode."""
+
     print(f"\n{_SEP}")
     print(f"  {title}  |  'exit' oder Ctrl+C zum Beenden")
     print(_SEP)

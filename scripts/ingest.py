@@ -20,7 +20,7 @@ def build_ingestion_message(processed_entries: int, upserted_points: int, vector
 
 
 def main() -> int:
-    """Run the standalone FAQ ingestion flow."""
+    """Run the offline ingestion flow and print a compact status summary."""
 
     try:
         settings = get_settings()

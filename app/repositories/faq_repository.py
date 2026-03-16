@@ -17,7 +17,7 @@ class FAQRepositoryError(RuntimeError):
 
 @dataclass(slots=True)
 class FAQRepository:
-    """Load validated FAQ entries from a JSON file."""
+    """Disk boundary that turns ``faq.json`` into validated domain objects."""
 
     data_path: Path
 
@@ -28,7 +28,7 @@ class FAQRepository:
         return cls(data_path=resolve_project_path(settings.faq_data_path))
 
     def list_entries(self) -> list[FAQEntry]:
-        """Return all FAQ entries as validated domain objects."""
+        """Load, validate, and de-duplicate every configured FAQ entry."""
 
         payload = self._load_json()
         if not isinstance(payload, list):
@@ -42,6 +42,7 @@ class FAQRepository:
             except FAQValidationError as exc:
                 raise FAQRepositoryError(str(exc)) from exc
             if entry.id in seen_entry_ids:
+                # Duplicate ids would make retrieval and source attribution ambiguous.
                 raise FAQRepositoryError(
                     f"FAQ record {index} uses duplicate id '{entry.id}'"
                 )
@@ -62,6 +63,8 @@ class FAQRepository:
         return None
 
     def _load_json(self) -> Any:
+        """Read and parse the raw JSON payload while translating IO errors."""
+
         try:
             raw_text = self.data_path.read_text(encoding="utf-8")
         except FileNotFoundError as exc:
