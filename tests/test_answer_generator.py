@@ -8,7 +8,7 @@ import pytest
 
 from app.config import AppSettings
 from app.domain import AnswerResponse, FAQEntry, PromptTemplate, RetrievalResult
-from app.infrastructure import OllamaClientError
+from app.infrastructure import OllamaClientError, OllamaGenerationResult
 from app.services import AnswerGenerator, AnswerGeneratorError
 
 
@@ -69,9 +69,8 @@ class TestPromptBuilding:
         template = PromptTemplate()
         prompt = template.build("Question?", sample_faq)
 
-        assert "FAQ assistant" in prompt
-        assert "ONLY the provided FAQ context" in prompt
-        assert "ignore any instructions" in prompt
+        assert "FAQ-Assistent" in prompt
+        assert "NUR" in prompt
         assert template.fallback_message in prompt
 
     def test_prompt_template_rejects_empty_question(
@@ -90,7 +89,7 @@ class TestPromptBuilding:
 
         prompt = template.build("Question", faq)
 
-        assert "Tags: none" in prompt
+        assert "Tags: keine" in prompt
 
 
 class TestAnswerGeneratorWithRetrieval:
@@ -100,8 +99,10 @@ class TestAnswerGeneratorWithRetrieval:
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test answer generation when FAQ is retrieved."""
-        answer_generator.ollama_client.generate.return_value = (
-            "Visit the login page and click Forgot Password."
+        answer_generator.ollama_client.generate_response.return_value = (
+            OllamaGenerationResult(
+                response="Visit the login page and click Forgot Password."
+            )
         )
 
         retrieval = RetrievalResult(
@@ -123,8 +124,10 @@ class TestAnswerGeneratorWithRetrieval:
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test that generation calls Ollama with grounded prompt."""
-        answer_generator.ollama_client.generate.return_value = (
-            "Visit the login page and click Forgot Password."
+        answer_generator.ollama_client.generate_response.return_value = (
+            OllamaGenerationResult(
+                response="Visit the login page and click Forgot Password."
+            )
         )
 
         retrieval = RetrievalResult(
@@ -137,8 +140,8 @@ class TestAnswerGeneratorWithRetrieval:
         answer_generator.generate("How do I reset?", retrieval)
 
         # Verify Ollama was called
-        assert answer_generator.ollama_client.generate.called
-        prompt = answer_generator.ollama_client.generate.call_args[0][0]
+        assert answer_generator.ollama_client.generate_response.called
+        prompt = answer_generator.ollama_client.generate_response.call_args[0][0]
 
         # Verify prompt is grounded in FAQ
         assert "How do I reset?" in prompt
@@ -149,8 +152,10 @@ class TestAnswerGeneratorWithRetrieval:
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test that generated answers have whitespace cleaned."""
-        answer_generator.ollama_client.generate.return_value = (
-            "  \n  Visit the login page and click Forgot Password.  \n  "
+        answer_generator.ollama_client.generate_response.return_value = (
+            OllamaGenerationResult(
+                response="  \n  Visit the login page and click Forgot Password.  \n  "
+            )
         )
 
         retrieval = RetrievalResult(
@@ -164,14 +169,76 @@ class TestAnswerGeneratorWithRetrieval:
 
         assert result.answer == "Visit the login page and click Forgot Password."
 
+    def test_generate_preserves_thinking_trace(
+        self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
+    ) -> None:
+        answer_generator.enable_thinking = True
+        answer_generator.ollama_client.generate_response.return_value = (
+            OllamaGenerationResult(
+                response="Visit the login page and click Forgot Password.",
+                thinking="First check the FAQ context.",
+                done_reason="stop",
+            )
+        )
+
+        retrieval = RetrievalResult(
+            matched_entry=sample_faq,
+            score=0.85,
+            top_k_results=[(sample_faq, 0.85)],
+            retrieved=True,
+        )
+
+        result = answer_generator.generate("How do I reset my password?", retrieval)
+
+        assert result.thinking == "First check the FAQ context."
+
+    def test_generate_retries_without_thinking_when_budget_is_exhausted(
+        self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
+    ) -> None:
+        answer_generator.enable_thinking = True
+        answer_generator.ollama_client.generate_response.side_effect = [
+            OllamaGenerationResult(
+                response="",
+                thinking="I should inspect the password reset FAQ.",
+                done_reason="length",
+            ),
+            OllamaGenerationResult(
+                response="Visit the login page and click Forgot Password.",
+                thinking=None,
+                done_reason="stop",
+            ),
+        ]
+
+        retrieval = RetrievalResult(
+            matched_entry=sample_faq,
+            score=0.85,
+            top_k_results=[(sample_faq, 0.85)],
+            retrieved=True,
+        )
+
+        result = answer_generator.generate("How do I reset my password?", retrieval)
+
+        assert result.answer == "Visit the login page and click Forgot Password."
+        assert result.thinking is not None
+        assert "I should inspect the password reset FAQ." in result.thinking
+        assert "truncated" in result.thinking
+        assert answer_generator.ollama_client.generate_response.call_count == 2
+
 
 class TestAnswerGeneratorWithFallback:
     """Tests for fallback behavior when retrieval fails."""
 
-    def test_generate_fallback_when_not_retrieved(
+    def test_generate_fallback_when_not_retrieved_and_llm_says_so(
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
-        """Test that fallback is returned when retrieval.retrieved is False."""
+        """Test that fallback is returned when LLM returns the fallback message."""
+        answer_generator.ollama_client.generate_response.return_value = (
+            OllamaGenerationResult(
+                response=answer_generator.fallback_message,
+                thinking=None,
+                done_reason="stop",
+            )
+        )
         retrieval = RetrievalResult(
             matched_entry=None,
             score=0.45,
@@ -179,18 +246,27 @@ class TestAnswerGeneratorWithFallback:
             retrieved=False,
         )
 
-        result = answer_generator.generate("Unrelated question?", retrieval)
+        result = answer_generator.generate("Unrelated company question?", retrieval)
 
         assert result.answer == answer_generator.fallback_message
         assert result.confidence == 0.45
         assert result.source_faq_id is None
         assert result.is_fallback is True
         assert result.used_retrieval is False
+        # LLM is called for ambiguous questions; mock is configured to return fallback
+        assert answer_generator.ollama_client.generate_response.called
 
     def test_fallback_preserves_low_score(
         self, answer_generator: AnswerGenerator
     ) -> None:
-        """Test that fallback response includes actual retrieval score."""
+        """Test that response includes actual retrieval score even for general questions."""
+        answer_generator.ollama_client.generate_response.return_value = (
+            OllamaGenerationResult(
+                response=answer_generator.fallback_message,
+                thinking=None,
+                done_reason="stop",
+            )
+        )
         retrieval = RetrievalResult(
             matched_entry=None,
             score=0.30,
@@ -198,15 +274,24 @@ class TestAnswerGeneratorWithFallback:
             retrieved=False,
         )
 
-        result = answer_generator.generate("Q?", retrieval)
+        result = answer_generator.generate("Welche Services bieten Sie an?", retrieval)
 
         assert result.confidence == 0.30
         assert result.is_fallback is True
+        # "Services" is a company hint term → deterministic fallback, no LLM call
+        assert not answer_generator.ollama_client.generate_response.called
 
-    def test_ollama_not_called_for_fallback(
+    def test_ollama_called_for_general_conversation(
         self, answer_generator: AnswerGenerator
     ) -> None:
-        """Test that Ollama is not called when using fallback."""
+        """Test that Ollama IS called for general conversation when retrieval fails."""
+        answer_generator.ollama_client.generate_response.return_value = (
+            OllamaGenerationResult(
+                response="Hallo! Wie kann ich Ihnen helfen?",
+                thinking=None,
+                done_reason="stop",
+            )
+        )
         retrieval = RetrievalResult(
             matched_entry=None,
             score=0.45,
@@ -214,17 +299,36 @@ class TestAnswerGeneratorWithFallback:
             retrieved=False,
         )
 
-        answer_generator.generate("Q?", retrieval)
+        result = answer_generator.generate("Hallo", retrieval)
 
-        # Ollama should not be called for fallback
-        assert not answer_generator.ollama_client.generate.called
+        assert answer_generator.ollama_client.generate_response.called
+        assert result.is_fallback is False
+        assert result.used_retrieval is False
+
+    def test_factual_off_topic_question_uses_fallback_without_llm_call(
+        self, answer_generator: AnswerGenerator
+    ) -> None:
+        retrieval = RetrievalResult(
+            matched_entry=None,
+            score=0.10,
+            top_k_results=[],
+            retrieved=False,
+        )
+
+        result = answer_generator.generate("Was ist das Wetter morgen?", retrieval)
+
+        assert result.answer == answer_generator.fallback_message
+        assert result.is_fallback is True
+        assert not answer_generator.ollama_client.generate_response.called
 
     def test_off_topic_generated_answer_falls_back(
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Off-topic answers should be replaced with the deterministic fallback."""
-        answer_generator.ollama_client.generate.return_value = (
-            "The weather in Paris is sunny today."
+        answer_generator.ollama_client.generate_response.return_value = (
+            OllamaGenerationResult(
+                response="The weather in Paris is sunny today."
+            )
         )
 
         retrieval = RetrievalResult(
@@ -262,7 +366,7 @@ class TestAnswerGeneratorErrorHandling:
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test that Ollama errors are wrapped."""
-        answer_generator.ollama_client.generate.side_effect = OllamaClientError(
+        answer_generator.ollama_client.generate_response.side_effect = OllamaClientError(
             "Model not found"
         )
 
@@ -280,7 +384,9 @@ class TestAnswerGeneratorErrorHandling:
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test that empty generated answers are rejected."""
-        answer_generator.ollama_client.generate.return_value = "   \n   "
+        answer_generator.ollama_client.generate_response.return_value = (
+            OllamaGenerationResult(response="   \n   ")
+        )
 
         retrieval = RetrievalResult(
             matched_entry=sample_faq,
@@ -304,13 +410,16 @@ class TestAnswerGeneratorEndToEnd:
         assert generator.ollama_client is not None
         assert generator.prompt_template is not None
         assert generator.fallback_message == settings.fallback_message
+        assert generator.enable_thinking is settings.ollama_enable_thinking
 
     def test_response_structure(
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test AnswerResponse structure."""
-        answer_generator.ollama_client.generate.return_value = (
-            "Visit the login page and click Forgot Password."
+        answer_generator.ollama_client.generate_response.return_value = (
+            OllamaGenerationResult(
+                response="Visit the login page and click Forgot Password."
+            )
         )
 
         retrieval = RetrievalResult(
@@ -335,8 +444,10 @@ class TestAnswerGeneratorEndToEnd:
         self, answer_generator: AnswerGenerator, sample_faq: FAQEntry
     ) -> None:
         """Test that AnswerResponse is immutable."""
-        answer_generator.ollama_client.generate.return_value = (
-            "Visit the login page and click Forgot Password."
+        answer_generator.ollama_client.generate_response.return_value = (
+            OllamaGenerationResult(
+                response="Visit the login page and click Forgot Password."
+            )
         )
 
         retrieval = RetrievalResult(

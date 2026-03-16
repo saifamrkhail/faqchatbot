@@ -14,3 +14,4 @@ class AnswerResponse:
     source_faq_id: str | None
     is_fallback: bool
     used_retrieval: bool
+    thinking: str | None = None

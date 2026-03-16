@@ -53,7 +53,9 @@ class TestAnswerGeneratorWithRealData:
 
         assert "Test question" in prompt
         assert faq.question in prompt
-        assert faq.answer in prompt
+        # Answers longer than 200 chars are truncated in the prompt (P1b)
+        answer_preview = faq.answer[:200] if len(faq.answer) > 200 else faq.answer
+        assert answer_preview in prompt
 
     def test_answer_response_structure(self, sample_faqs: list[FAQEntry]) -> None:
         """Test AnswerResponse structure with real data."""
@@ -146,8 +148,8 @@ class TestPromptTemplateVariations:
 
         prompt = template.build("User question", faq)
 
-        assert "Tags: none" in prompt
-        assert "uncategorized" in prompt
+        assert "Tags: keine" in prompt
+        assert "allgemein" in prompt
 
     def test_template_with_multiple_tags(self, sample_faqs: list[FAQEntry]) -> None:
         """Test prompt building with multiple tags."""

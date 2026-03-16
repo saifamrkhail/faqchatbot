@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import Iterator, Protocol, runtime_checkable
 
 from app.domain import ChatResponse as DomainChatResponse
 from app.services import ChatService
@@ -17,6 +17,7 @@ class ChatResponse:
     answer: str
     source_faq: str | None = None
     is_fallback: bool = False
+    thinking: str | None = None
 
 
 @runtime_checkable
@@ -36,6 +37,10 @@ class ChatServiceAdapter:
         response = self.chat_service.handle_question(question)
         return _to_ui_response(response)
 
+    def ask_streaming(self, question: str) -> Iterator[str]:
+        """Stream answer tokens from the core chat service."""
+        yield from self.chat_service.handle_question_streaming(question)
+
 
 class StubChatService:
     """Canned chat service for standalone UI testing and development."""
@@ -52,6 +57,7 @@ class StubChatService:
             answer=self._STUB_ANSWER,
             source_faq=None,
             is_fallback=True,
+            thinking=None,
         )
 
 
@@ -60,4 +66,5 @@ def _to_ui_response(response: DomainChatResponse) -> ChatResponse:
         answer=response.answer,
         source_faq=response.source_faq_id,
         is_fallback=response.is_fallback,
+        thinking=response.thinking,
     )

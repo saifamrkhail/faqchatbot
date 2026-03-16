@@ -26,12 +26,19 @@ class TestChatResponse:
         assert resp.answer == "Hello"
         assert resp.source_faq is None
         assert resp.is_fallback is False
+        assert resp.thinking is None
 
     def test_construct_with_all_fields(self) -> None:
-        resp = ChatResponse(answer="A", source_faq="faq-01", is_fallback=True)
+        resp = ChatResponse(
+            answer="A",
+            source_faq="faq-01",
+            is_fallback=True,
+            thinking="Check FAQ context.",
+        )
         assert resp.answer == "A"
         assert resp.source_faq == "faq-01"
         assert resp.is_fallback is True
+        assert resp.thinking == "Check FAQ context."
 
     def test_is_frozen(self) -> None:
         resp = ChatResponse(answer="X")
@@ -74,6 +81,7 @@ class TestChatServiceAdapter:
                     confidence=0.9,
                     source_faq_id="faq-01",
                     used_retrieval=True,
+                    thinking="Ich prüfe die FAQ.",
                 )
 
         assert isinstance(ChatServiceAdapter(CoreService()), ChatServiceProtocol)
@@ -88,6 +96,7 @@ class TestChatServiceAdapter:
                     confidence=0.9,
                     source_faq_id="faq-01",
                     used_retrieval=True,
+                    thinking="Ich prüfe die FAQ.",
                 )
 
         response = ChatServiceAdapter(CoreService()).ask("Frage")
@@ -95,6 +104,7 @@ class TestChatServiceAdapter:
         assert response.answer == "Antwort"
         assert response.source_faq == "faq-01"
         assert response.is_fallback is False
+        assert response.thinking == "Ich prüfe die FAQ."
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +166,20 @@ class TestRunChatLoop:
             run_chat_loop(service, title="test")
         printed = " ".join(str(c) for c in mock_print.call_args_list)
         assert "Ja, wir bieten Support an." in printed
+
+    def test_prints_thinking_trace_when_available(self) -> None:
+        service = MagicMock(spec=ChatServiceProtocol)
+        service.ask.return_value = ChatResponse(
+            answer="Ja, wir bieten Support an.",
+            thinking="Ich prüfe die Services-FAQ.",
+        )
+        with patch("builtins.input", side_effect=["Frage?", EOFError()]), \
+             patch("builtins.print") as mock_print:
+            from app.ui.chat_app import run_chat_loop
+            run_chat_loop(service, title="test")
+        printed = " ".join(str(c) for c in mock_print.call_args_list)
+        assert "Qwen denkt:" in printed
+        assert "Ich prüfe die Services-FAQ." in printed
 
     def test_prints_error_on_service_exception(self) -> None:
         service = MagicMock(spec=ChatServiceProtocol)

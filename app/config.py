@@ -17,19 +17,25 @@ DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_DEBUG = False
 DEFAULT_FAQ_DATA_PATH = "data/faq.json"
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_OLLAMA_GENERATE_MODEL = "qwen3.5:2b"
+DEFAULT_OLLAMA_GENERATE_MODEL = "qwen3.5:9b"
 DEFAULT_OLLAMA_EMBEDDING_MODEL = "nomic-embed-text-v2-moe"
-DEFAULT_OLLAMA_TIMEOUT_SECONDS = 30.0
+DEFAULT_OLLAMA_TIMEOUT_SECONDS = 120.0
 DEFAULT_OLLAMA_GENERATE_TEMPERATURE = 0.1
-DEFAULT_OLLAMA_GENERATE_MAX_TOKENS = 160
+DEFAULT_OLLAMA_GENERATE_MAX_TOKENS = 512
+DEFAULT_OLLAMA_ENABLE_THINKING = False
 DEFAULT_QDRANT_URL = "http://localhost:6333"
 DEFAULT_QDRANT_COLLECTION_NAME = "faq_entries"
 DEFAULT_QDRANT_TIMEOUT_SECONDS = 30.0
 DEFAULT_TOP_K = 3
-DEFAULT_SCORE_THRESHOLD = 0.70
+DEFAULT_SCORE_THRESHOLD = 0.50
 DEFAULT_FALLBACK_MESSAGE = "Leider konnte ich Ihre Frage nicht verstehen."
 DEFAULT_MAX_QUESTION_CHARS = 500
 DEFAULT_USE_STUB_UI_SERVICE = False
+DEFAULT_QUERY_REWRITE_ENABLED = True
+DEFAULT_QUERY_REWRITE_BORDERLINE_MIN_SCORE = 0.35
+DEFAULT_QUERY_REWRITE_MAX_VARIANTS = 3
+DEFAULT_QUERY_REWRITE_TEMPERATURE = 0.0
+DEFAULT_QUERY_REWRITE_MAX_TOKENS = 96
 
 
 class SettingsError(ValueError):
@@ -51,6 +57,7 @@ class AppSettings:
     ollama_timeout_seconds: float = DEFAULT_OLLAMA_TIMEOUT_SECONDS
     ollama_generate_temperature: float = DEFAULT_OLLAMA_GENERATE_TEMPERATURE
     ollama_generate_max_tokens: int = DEFAULT_OLLAMA_GENERATE_MAX_TOKENS
+    ollama_enable_thinking: bool = DEFAULT_OLLAMA_ENABLE_THINKING
     qdrant_url: str = DEFAULT_QDRANT_URL
     qdrant_collection_name: str = DEFAULT_QDRANT_COLLECTION_NAME
     qdrant_timeout_seconds: float = DEFAULT_QDRANT_TIMEOUT_SECONDS
@@ -59,6 +66,13 @@ class AppSettings:
     fallback_message: str = DEFAULT_FALLBACK_MESSAGE
     max_question_chars: int = DEFAULT_MAX_QUESTION_CHARS
     use_stub_ui_service: bool = DEFAULT_USE_STUB_UI_SERVICE
+    query_rewrite_enabled: bool = DEFAULT_QUERY_REWRITE_ENABLED
+    query_rewrite_borderline_min_score: float = (
+        DEFAULT_QUERY_REWRITE_BORDERLINE_MIN_SCORE
+    )
+    query_rewrite_max_variants: int = DEFAULT_QUERY_REWRITE_MAX_VARIANTS
+    query_rewrite_temperature: float = DEFAULT_QUERY_REWRITE_TEMPERATURE
+    query_rewrite_max_tokens: int = DEFAULT_QUERY_REWRITE_MAX_TOKENS
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "AppSettings":
@@ -105,6 +119,14 @@ class AppSettings:
             "OLLAMA_GENERATE_MAX_TOKENS",
             minimum=1,
         )
+        ollama_enable_thinking = _parse_bool(
+            _get_string(
+                env,
+                "OLLAMA_ENABLE_THINKING",
+                str(DEFAULT_OLLAMA_ENABLE_THINKING),
+            ),
+            "OLLAMA_ENABLE_THINKING",
+        )
         qdrant_url = _get_string(env, "QDRANT_URL", DEFAULT_QDRANT_URL)
         qdrant_collection_name = _get_string(
             env, "QDRANT_COLLECTION_NAME", DEFAULT_QDRANT_COLLECTION_NAME
@@ -150,9 +172,59 @@ class AppSettings:
             ),
             "USE_STUB_UI_SERVICE",
         )
+        query_rewrite_enabled = _parse_bool(
+            _get_string(
+                env,
+                "QUERY_REWRITE_ENABLED",
+                str(DEFAULT_QUERY_REWRITE_ENABLED),
+            ),
+            "QUERY_REWRITE_ENABLED",
+        )
+        query_rewrite_borderline_min_score = _parse_float(
+            _get_string(
+                env,
+                "QUERY_REWRITE_BORDERLINE_MIN_SCORE",
+                str(DEFAULT_QUERY_REWRITE_BORDERLINE_MIN_SCORE),
+            ),
+            "QUERY_REWRITE_BORDERLINE_MIN_SCORE",
+            minimum=0.0,
+            maximum=1.0,
+        )
+        query_rewrite_max_variants = _parse_int(
+            _get_string(
+                env,
+                "QUERY_REWRITE_MAX_VARIANTS",
+                str(DEFAULT_QUERY_REWRITE_MAX_VARIANTS),
+            ),
+            "QUERY_REWRITE_MAX_VARIANTS",
+            minimum=1,
+        )
+        query_rewrite_temperature = _parse_float(
+            _get_string(
+                env,
+                "QUERY_REWRITE_TEMPERATURE",
+                str(DEFAULT_QUERY_REWRITE_TEMPERATURE),
+            ),
+            "QUERY_REWRITE_TEMPERATURE",
+            minimum=0.0,
+            maximum=2.0,
+        )
+        query_rewrite_max_tokens = _parse_int(
+            _get_string(
+                env,
+                "QUERY_REWRITE_MAX_TOKENS",
+                str(DEFAULT_QUERY_REWRITE_MAX_TOKENS),
+            ),
+            "QUERY_REWRITE_MAX_TOKENS",
+            minimum=1,
+        )
 
         if not environment:
             raise SettingsError("ENVIRONMENT must not be empty")
+        if query_rewrite_borderline_min_score > score_threshold:
+            raise SettingsError(
+                "QUERY_REWRITE_BORDERLINE_MIN_SCORE must be <= SCORE_THRESHOLD"
+            )
 
         return cls(
             app_name=app_name,
@@ -166,6 +238,7 @@ class AppSettings:
             ollama_timeout_seconds=ollama_timeout_seconds,
             ollama_generate_temperature=ollama_generate_temperature,
             ollama_generate_max_tokens=ollama_generate_max_tokens,
+            ollama_enable_thinking=ollama_enable_thinking,
             qdrant_url=qdrant_url,
             qdrant_collection_name=qdrant_collection_name,
             qdrant_timeout_seconds=qdrant_timeout_seconds,
@@ -174,6 +247,11 @@ class AppSettings:
             fallback_message=fallback_message,
             max_question_chars=max_question_chars,
             use_stub_ui_service=use_stub_ui_service,
+            query_rewrite_enabled=query_rewrite_enabled,
+            query_rewrite_borderline_min_score=query_rewrite_borderline_min_score,
+            query_rewrite_max_variants=query_rewrite_max_variants,
+            query_rewrite_temperature=query_rewrite_temperature,
+            query_rewrite_max_tokens=query_rewrite_max_tokens,
         )
 
 

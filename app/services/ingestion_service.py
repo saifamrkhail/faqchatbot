@@ -106,7 +106,10 @@ class IngestionService:
         return points
 
     def _build_embedding_text(self, entry: FAQEntry) -> str:
-        parts = [entry.question, entry.answer]
+        parts = [entry.question]
+        if entry.alt_questions:
+            parts.extend(entry.alt_questions)
+        parts.append(entry.answer)
         if entry.category:
             parts.append(f"Category: {entry.category}")
         if entry.tags:

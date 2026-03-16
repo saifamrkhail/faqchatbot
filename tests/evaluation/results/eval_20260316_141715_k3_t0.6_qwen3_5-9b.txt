@@ -1,0 +1,94 @@
+========================================================================
+FAQ CHATBOT EVALUATION REPORT
+Timestamp : 2026-03-16 14:17:15
+Model     : qwen3.5:9b
+Embedding : nomic-embed-text-v2-moe
+top_k     : 3
+threshold : 0.6
+temp      : 0.2
+max_tokens: 512
+========================================================================
+
+SUMMARY BY CATEGORY
+------------------------------------------------------------------------
+  faq_direct             10/10 (100.0%)  avg_score=0.88  avg_latency=31.2s
+  faq_paraphrase         13/13 (100.0%)  avg_score=0.73  avg_latency=37.3s
+  company_offtopic        7/ 7 (100.0%)  avg_score=0.33  avg_latency=27.9s
+  hallucination           3/ 5 ( 60.0%)  avg_score=0.49  avg_latency=53.8s
+  general_chat            7/ 7 (100.0%)  avg_score=0.25  avg_latency=26.9s
+  boundary                6/ 6 (100.0%)  avg_score=0.60  avg_latency=30.2s
+------------------------------------------------------------------------
+  TOTAL                  46/48 (95.8%)
+
+Latency: min=18.3s  max=78.8s  avg=34.0s
+
+FAILURES (2)
+------------------------------------------------------------------------
+
+  [hallucination] Geographic expansion claim – not in FAQ
+  Q: Bieten Sie auch Dienste in den USA an?
+  score=0.45  retrieved=False  fallback=False  faq=None
+  FAIL fallback: expected=True got=False
+  HALLUCINATION DETECTED: flags=['usa']
+  A: Das ist eine interessante Frage! Da ich aber keine genauen Informationen zu unseren spezifischen Dienstleistungen in den USA habe, antworte ich leider
+
+  [hallucination] Specific technology partner claim
+  Q: Sie arbeiten doch sicher auch mit SAP?
+  score=0.36  retrieved=False  fallback=False  faq=None
+  FAIL fallback: expected=True got=False
+  A: Das ist eine interessante Frage! Da ich aber keine spezifischen Informationen über unsere genauen Systeme habe, kann ich Ihnen dazu leider nichts Best
+
+ALL RESULTS
+------------------------------------------------------------------------
+  # Cat                Score Ret  FB Halu    ms  Description / Answer
+------------------------------------------------------------------------
+  1 faq_direct          0.95 YES NO  OK   30351  FAQ #1 verbatim: Wir bieten eine breite Palette von IT-Dienstleistungen an, d
+  2 faq_direct          0.82 YES NO  OK   30797  FAQ #2 verbatim: Wir bieten verschiedene Support-Optionen an, einschließlich 
+  3 faq_direct          0.83 YES NO  OK   33584  FAQ #3 verbatim: Wir verwenden eine Kombination aus modernsten Cybersicherhei
+  4 faq_direct          0.92 YES NO  OK   31569  FAQ #4 verbatim: Ja, wir bieten umfassende Cloud-Migrationsdienste an, die al
+  5 faq_direct          0.93 YES NO  OK   30625  FAQ #5 verbatim: Wir helfen Ihnen, die relevanten Datenschutzvorschriften wie
+  6 faq_direct          0.92 YES NO  OK   33684  FAQ #6 verbatim: Wir implementieren Redundanzlösungen, regelmäßige Backups, M
+  7 faq_direct          0.93 YES NO  OK   33872  FAQ #7 verbatim: Ja, wir bieten maßgeschneiderte Softwareentwicklungsdienste 
+  8 faq_direct          0.91 YES NO  OK   30554  FAQ #8 verbatim: Eine IT-Beratung beginnt mit einer umfassenden Analyse Ihrer
+  9 faq_direct          0.82 YES NO  OK   24182  FAQ #9 verbatim: Wir bedienen eine Vielzahl von Branchen, darunter Gesundheit
+ 10 faq_direct          0.83 YES NO  OK   32673  FAQ #10 verbatim: Die Kosten unserer Dienstleistungen variieren je nach Umfang
+ 11 faq_paraphrase      0.81 YES NO  OK   31508  FAQ #1 – short paraphrase: Wir bieten eine breite Palette von IT-Dienstleistungen an, d
+ 12 faq_paraphrase      0.69 YES NO  OK   42483  FAQ #1 – 'Services' instead of: Wir bieten eine breite Palette von IT-Dienstleistungen an, d
+ 13 faq_paraphrase      0.67 YES NO  OK   78780  FAQ #2 – support options rephr: Wir bieten verschiedene Support-Optionen an, einschließlich 
+ 14 faq_paraphrase      0.62 YES NO  OK   40029  FAQ #3 – security rephrased: Wir verwenden eine Kombination aus modernsten Cybersicherhei
+ 15 faq_paraphrase      0.79 YES NO  OK   35719  FAQ #4 – cloud migration rephr: Ja, wir bieten umfassende Cloud-Migrationsdienste an, die al
+ 16 faq_paraphrase      0.90 YES NO  OK   31391  FAQ #5 – DSGVO short form: Wir unterstützen Sie bei der Einhaltung der DSGVO, indem wir
+ 17 faq_paraphrase      0.64 YES NO  OK   39528  FAQ #6 – availability rephrase: Wir implementieren Redundanzlösungen, regelmäßige Backups, M
+ 18 faq_paraphrase      0.76 YES NO  OK   34958  FAQ #7 – custom software rephr: Ja, wir bieten maßgeschneiderte Softwareentwicklungsdienste 
+ 19 faq_paraphrase      0.77 YES NO  OK   36466  FAQ #8 – consulting rephrased: Eine IT-Beratung beginnt mit einer umfassenden Analyse Ihrer
+ 20 faq_paraphrase      0.71 YES NO  OK   27747  FAQ #9 – industries rephrased: Wir arbeiten mit Unternehmen aus den Branchen Gesundheitswes
+ 21 faq_paraphrase      0.62 YES NO  OK   37967  FAQ #10 – pricing rephrased: Die Kosten unserer Dienstleistungen variieren je nach Umfang
+ 22 faq_paraphrase      0.84 YES NO  OK   26506  FAQ #2 – specific detail from : Ja, wir bieten 24/7 Helpdesk-Support an.
+ 23 faq_paraphrase      0.65 YES NO  OK   22128  FAQ #4 – specific cloud provid: Ja, wir arbeiten mit AWS und Azure.
+ 24 company_offtopic    0.38 NO  YES OK   25578  Company size – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 25 company_offtopic    0.26 NO  YES OK   19128  Headquarters – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 26 company_offtopic    0.37 NO  YES OK   46493  Company founding date – not in: Leider konnte ich Ihre Frage nicht verstehen.
+ 27 company_offtopic    0.31 NO  YES OK   21155  Specific office location – not: Leider konnte ich Ihre Frage nicht verstehen.
+ 28 company_offtopic    0.23 NO  YES OK   18854  Contact phone number – not in : Leider konnte ich Ihre Frage nicht verstehen.
+ 29 company_offtopic    0.27 NO  YES OK   18913  CEO name – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 30 company_offtopic    0.50 NO  YES OK   45085  Certifications – not in FAQ: Leider konnte ich Ihre Frage nicht verstehen.
+ 31 hallucination       0.54 NO  YES OK   40292  Leading price claim for specif: Leider konnte ich Ihre Frage nicht verstehen.
+ 32 hallucination       0.45 NO  NO  FAIL 68071  Geographic expansion claim – n: Das ist eine interessante Frage! Da ich aber keine genauen I
+ 33 hallucination       0.60 NO  YES OK   60776  Duration claim – not in FAQ an: Leider konnte ich Ihre Frage nicht verstehen.
+ 34 hallucination       0.36 NO  NO  OK   51493  Specific technology partner cl: Das ist eine interessante Frage! Da ich aber keine spezifisc
+ 35 hallucination       0.47 NO  YES OK   48420  Specific pricing tiers – not i: Leider konnte ich Ihre Frage nicht verstehen.
+ 36 general_chat        0.18 NO  NO  OK   18347  Simple greeting: Hallo! Wie kann ich Ihnen heute helfen?
+ 37 general_chat        0.23 NO  NO  OK   19682  Morning greeting: Guten Morgen! Wie kann ich Ihnen heute helfen?
+ 38 general_chat        0.45 NO  NO  OK   46682  Thank you: Gerne geschehen! Falls Sie noch etwas brauchen, stehen wir I
+ 39 general_chat        0.12 NO  NO  OK   18955  Goodbye: Tschüss! Bis bald! 😊
+ 40 general_chat        0.28 NO  NO  OK   22249  Small talk – how are you: Hallo! Mir geht es sehr gut, danke der Nachfrage. Wie geht e
+ 41 general_chat        0.17 NO  NO  OK   22784  Bot identity question: Hallo! Ich bin Ihr freundlicher Kundenservice-Assistent. Wie
+ 42 general_chat        0.30 NO  NO  OK   39368  Bot capabilities question: Hallo! Ich bin hier, um Ihnen bei kleinen, harmlosen Gespräc
+ 43 boundary            0.60 YES NO  OK   33055  FAQ #1 with typo in key word: Wir bieten eine breite Palette von IT-Dienstleistungen an, d
+ 44 boundary            0.32 NO  NO  OK   18470  Single-word query: Hallo! Wie kann ich Ihnen heute helfen?
+ 45 boundary            0.65 YES NO  OK   32012  Single-word English query: Wir bieten verschiedene Support-Optionen an, einschließlich 
+ 46 boundary            0.70 YES NO  OK   32924  FAQ #1 in English: Wir bieten eine breite Palette von IT-Dienstleistungen an, d
+ 47 boundary            0.77 YES NO  OK   21238  Mixed language (English + Germ: Ja, wir bieten Cloud-Lösungen an.
+ 48 boundary            0.54 NO  YES OK   43396  Very long, compound query touc: Leider konnte ich Ihre Frage nicht verstehen.
+
+========================================================================

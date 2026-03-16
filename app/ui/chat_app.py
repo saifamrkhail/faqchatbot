@@ -30,10 +30,19 @@ def run_chat_loop(chat_service: ChatServiceProtocol, *, title: str = "faqchatbot
             print("Tschüss!")
             break
 
-        print("...")
-
         try:
-            response = chat_service.ask(question)
-            print(f"Bot: {response.answer}\n")
+            if hasattr(chat_service, "ask_streaming"):
+                print("Bot: ", end="", flush=True)
+                for token in chat_service.ask_streaming(question):
+                    print(token, end="", flush=True)
+                print("\n")
+            else:
+                print("...")
+                response = chat_service.ask(question)
+                if response.thinking:
+                    print("Qwen denkt:")
+                    print(response.thinking)
+                    print()
+                print(f"Bot: {response.answer}\n")
         except Exception as exc:  # noqa: BLE001
-            print(f"Fehler: {exc}\n")
+            print(f"\nFehler: {exc}\n")

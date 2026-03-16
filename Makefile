@@ -99,7 +99,7 @@ rebuild:
 pull-models:
 	@echo "$(CYAN)Pulling Ollama models into container...$(NC)"
 	docker compose exec ollama ollama pull nomic-embed-text-v2-moe
-	docker compose exec ollama ollama pull qwen3.5:2b
+	docker compose exec ollama ollama pull qwen3.5:9b
 	@echo "$(GREEN)Models pulled successfully$(NC)"
 	@make models
 
@@ -109,7 +109,7 @@ ingest:
 
 chat:
 	@echo "$(CYAN)Starting chatbot...$(NC)"
-	docker compose run --rm app
+	docker compose run --rm --build app
 
 chat-bg:
 	@echo "$(CYAN)Starting chatbot in background...$(NC)"
@@ -126,6 +126,22 @@ sync:
 test:
 	@echo "$(CYAN)Running tests...$(NC)"
 	uv run pytest -v
+
+eval:
+	@echo "$(CYAN)Running chatbot evaluation against live services...$(NC)"
+	uv run python -m tests.evaluation.runner -v
+
+eval-category:
+	@echo "$(CYAN)Running evaluation for category: $(CAT)$(NC)"
+	uv run python -m tests.evaluation.runner -v --category $(CAT)
+
+grid-search:
+	@echo "$(CYAN)Running parameter grid search (quick)...$(NC)"
+	uv run python -m tests.evaluation.grid_search --quick
+
+grid-search-full:
+	@echo "$(CYAN)Running full parameter grid search...$(NC)"
+	uv run python -m tests.evaluation.grid_search
 
 test-watch:
 	@echo "$(CYAN)Running tests in watch mode...$(NC)"

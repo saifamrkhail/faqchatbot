@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Iterator
 
 from app.config import AppSettings, DEFAULT_MAX_QUESTION_CHARS
 from app.domain.chat_response import ChatResponse
+from app.infrastructure import OllamaClientError
 from app.services.answer_generator import AnswerGenerator, AnswerGeneratorError
 from app.services.retriever import Retriever, RetrieverError
 
@@ -73,6 +75,7 @@ class ChatService:
                 confidence=answer_response.confidence,
                 source_faq_id=answer_response.source_faq_id,
                 used_retrieval=answer_response.used_retrieval,
+                thinking=answer_response.thinking,
             )
 
         except ChatServiceError:
@@ -80,6 +83,37 @@ class ChatService:
         except RetrieverError as exc:
             raise ChatServiceError(f"Retrieval failed: {exc}") from exc
         except AnswerGeneratorError as exc:
+            raise ChatServiceError(f"Generation failed: {exc}") from exc
+        except Exception as exc:
+            raise ChatServiceError(f"Unexpected error during chat: {exc}") from exc
+
+    def handle_question_streaming(self, question: str) -> Iterator[str]:
+        """Streaming variant of handle_question.
+
+        Yields text tokens for generated answers.
+        Yields the complete fallback message as a single chunk when no FAQ was
+        retrieved and the question does not qualify for general chat.
+        """
+
+        normalized_question = question.strip()
+        if not normalized_question:
+            raise ChatServiceError("Question must not be empty")
+        if len(normalized_question) > self.max_question_chars:
+            raise ChatServiceError(
+                "Question exceeds maximum length of "
+                f"{self.max_question_chars} characters"
+            )
+
+        try:
+            retrieval_result = self.retriever.retrieve(normalized_question)
+            yield from self.answer_generator.generate_streaming(
+                normalized_question, retrieval_result
+            )
+        except ChatServiceError:
+            raise
+        except RetrieverError as exc:
+            raise ChatServiceError(f"Retrieval failed: {exc}") from exc
+        except OllamaClientError as exc:
             raise ChatServiceError(f"Generation failed: {exc}") from exc
         except Exception as exc:
             raise ChatServiceError(f"Unexpected error during chat: {exc}") from exc

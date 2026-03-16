@@ -57,7 +57,7 @@ make pull-models
 
 **What happens:**
 - Downloads `nomic-embed-text-v2-moe` (embedding model)
-- Downloads `qwen3.5:2b` (generation model)
+- Downloads `qwen3.5:9b` (generation model)
 - Stores them inside the Ollama container
 
 ⏱️ **This takes 2–5 minutes on first run** (~2 GB download)
@@ -199,7 +199,7 @@ make chat            # Start chatting!
 | **UI** | Terminal chat loop (plain input/output, no external dependencies) |
 
 **Models:**
-- **Generation:** `qwen3.5:2b` (LLM for answer generation)
+- **Generation:** `qwen3.5:9b` (LLM for answer generation)
 - **Embedding:** `nomic-embed-text-v2-moe` (for semantic search)
 - **Vector Store:** Qdrant (distributed vector database)
 - **Ingestion:** `faqchatbot` (loads and embeds FAQ data)
@@ -298,11 +298,11 @@ Set via `FAQ_CHATBOT_*` environment variables:
 
 ```bash
 FAQ_CHATBOT_OLLAMA_BASE_URL=http://localhost:11434
-FAQ_CHATBOT_OLLAMA_GENERATE_MODEL=qwen3.5:2b
+FAQ_CHATBOT_OLLAMA_GENERATE_MODEL=qwen3.5:9b
 FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL=nomic-embed-text-v2-moe
 FAQ_CHATBOT_QDRANT_URL=http://localhost:6333
 FAQ_CHATBOT_TOP_K=3
-FAQ_CHATBOT_SCORE_THRESHOLD=0.70
+FAQ_CHATBOT_SCORE_THRESHOLD=0.50
 FAQ_CHATBOT_FALLBACK_MESSAGE="Leider konnte ich Ihre Frage nicht verstehen."
 ```
 
