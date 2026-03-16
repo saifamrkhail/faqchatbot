@@ -14,12 +14,12 @@ def test_app_settings_uses_defaults_when_env_is_empty() -> None:
     assert settings.environment == "development"
     assert settings.faq_data_path == "data/faq.json"
     assert settings.ollama_timeout_seconds == pytest.approx(120.0)
-    assert settings.ollama_generate_temperature == pytest.approx(0.1)
+    assert settings.ollama_generate_temperature == pytest.approx(0.2)
     assert settings.ollama_generate_max_tokens == 512
     assert settings.ollama_enable_thinking is False
     assert settings.qdrant_timeout_seconds == pytest.approx(30.0)
     assert settings.top_k == 3
-    assert settings.score_threshold == pytest.approx(0.50)
+    assert settings.score_threshold == pytest.approx(0.60)
     assert settings.max_question_chars == 500
     assert settings.use_stub_ui_service is False
     assert settings.query_rewrite_enabled is True
@@ -114,8 +114,8 @@ def test_app_settings_rejects_invalid_generation_configuration() -> None:
     ):
         AppSettings.from_env(
             {
-                "FAQ_CHATBOT_SCORE_THRESHOLD": "0.50",
-                "FAQ_CHATBOT_QUERY_REWRITE_BORDERLINE_MIN_SCORE": "0.60",
+                "FAQ_CHATBOT_SCORE_THRESHOLD": "0.60",
+                "FAQ_CHATBOT_QUERY_REWRITE_BORDERLINE_MIN_SCORE": "0.70",
             }
         )
 

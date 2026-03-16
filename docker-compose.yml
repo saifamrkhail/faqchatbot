@@ -26,9 +26,10 @@ services:
       FAQ_CHATBOT_OLLAMA_EMBEDDING_MODEL: nomic-embed-text-v2-moe
       FAQ_CHATBOT_OLLAMA_TIMEOUT_SECONDS: "120"
       FAQ_CHATBOT_OLLAMA_GENERATE_MAX_TOKENS: "512"
+      FAQ_CHATBOT_OLLAMA_GENERATE_TEMPERATURE: "0.2"
       FAQ_CHATBOT_OLLAMA_ENABLE_THINKING: "false"
       FAQ_CHATBOT_TOP_K: "3"
-      FAQ_CHATBOT_SCORE_THRESHOLD: "0.50"
+      FAQ_CHATBOT_SCORE_THRESHOLD: "0.60"
       FAQ_CHATBOT_FALLBACK_MESSAGE: Leider konnte ich Ihre Frage nicht verstehen.
     extra_hosts:
       - "host.docker.internal:host-gateway"
